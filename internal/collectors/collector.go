@@ -31,11 +31,6 @@ type Result struct {
 	CachedAt   *time.Time      `json:"cached_at,omitempty"`
 }
 
-// hasError retorna true si el resultado contiene un error.
-func (r *Result) hasError() bool {
-	return r.Error != ""
-}
-
 // RunnerConfig contiene la configuración del Runner.
 type RunnerConfig struct {
 	// Host es el identificador del FlashSystem (usado como prefijo de clave de cache).
