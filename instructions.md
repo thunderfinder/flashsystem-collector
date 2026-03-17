@@ -9,7 +9,7 @@
 
 El sistema opera en dos modos excluyentes:
 
-- **`collect`**: ejecuta todos los collectors (system, nodes, enclosures, drives, pools, volumes, ports, flashcopy, replication, performance) en paralelo y emite un JSON único con todos los datos. Este JSON está diseñado para usarse como **Master Item** en Zabbix, del cual se derivan Dependent Items.
+- **`collect`**: ejecuta todos los collectors (system, nodes, enclosures, drives, pools, volumes, ports, flashcopy, replication, performance, batteries, psus) en paralelo y emite un JSON único con todos los datos. Este JSON está diseñado para usarse como **Master Item** en Zabbix, del cual se derivan Dependent Items.
 - **`discover`**: ejecuta un único collector para una categoría específica y emite JSON en formato **LLD (Low Level Discovery)** de Zabbix con macros `{#MACRO}`.
 
 El sistema implementa un **cache persistente en JSON** en disco para evitar conexiones SSH innecesarias. Si SSH falla, intenta servir datos del cache aunque estén expirados (stale cache) antes de retornar error.
@@ -44,7 +44,9 @@ flashsystem-collector/
     │   ├── ports.go                    # lsportfc
     │   ├── flashcopy.go                # lsfcmap
     │   ├── replication.go              # lsreplicationrelationship / lsrcrelationship
-    │   └── performance.go              # lssystemstats
+    │   ├── performance.go              # lssystemstats
+    │   ├── batteries.go                # lsenclosurebattery
+    │   └── psus.go                     # lsenclosurepsu
     └── zabbix/
         └── output.go                   # Construcción y serialización del JSON final
 ```
@@ -72,7 +74,7 @@ main()
             ├─ cache.Purge()              — elimina entradas expiradas
             ├─ internalssh.New()          — dial TCP + handshake SSH
             │    └─ si falla → buildFromStaleCache() → emitJSON() → return
-            ├─ collectors.AllCollectors() — instancia los 10 collectors con sus TTLs
+            ├─ collectors.AllCollectors() — instancia los 12 collectors con sus TTLs
             ├─ collectors.NewRunner()     — configura semáforo MaxConcurrent=3
             ├─ runner.RunAll()            — ejecuta collectors en paralelo
             │    └─ por cada collector:
@@ -120,8 +122,8 @@ main()
 ### Dependencias externas (go.mod)
 | Módulo | Versión | Uso |
 |--------|---------|-----|
-| `golang.org/x/crypto` | v0.22.0 | Cliente SSH (`golang.org/x/crypto/ssh`, `knownhosts`) |
-| `golang.org/x/sys` | v0.19.0 | Dependencia indirecta de crypto |
+| `golang.org/x/crypto` | v0.49.0 | Cliente SSH (`golang.org/x/crypto/ssh`, `knownhosts`) |
+| `golang.org/x/sys` | v0.42.0 | Dependencia indirecta de crypto |
 
 ### Acceso de red
 - Conectividad TCP al FlashSystem en el puerto configurado (default: **22**)
@@ -320,6 +322,8 @@ JSON emitido por stdout con la siguiente estructura de primer nivel:
   "flashcopy":   [ { "id": "0", "status": "idle_or_copied", ... } ],
   "replication": [ { ... } ],
   "performance": [ { "stat_name": "read_io", "stat_current": "912", ... } ],
+  "batteries":   [ { "enclosure_id": "1", "battery_id": "0", "status": "online", ... } ],
+  "psus":        [ { "enclosure_id": "1", "psu_id": "0", "status": "online", ... } ],
   "status": {
     "success": true,
     "duration_ms": 1234,
@@ -360,6 +364,8 @@ Todos los campos de cada Record son **strings** — los valores numéricos como 
 | `enclosures` | `{#ENCLOSUREID}`, `{#ENCLOSURESTATUS}`, `{#ENCLOSUREMODEL}` |
 | `nodes` | `{#NODEID}`, `{#NODENAME}`, `{#NODESTATUS}`, `{#NODEIOGROUP}` |
 | `ports` | `{#PORTID}`, `{#WWPN}`, `{#PORTSTATUS}`, `{#PORTNODENAME}`, `{#PORTSPEED}` |
+| `batteries` | `{#ENCLOSUREID}`, `{#BATTERYID}`, `{#BATTERYSTATUS}` |
+| `psus` | `{#ENCLOSUREID}`, `{#PSUID}`, `{#PSUSTATUS}` |
 
 ---
 
@@ -427,8 +433,8 @@ Comandos SSH ejecutados por cada collector:
 | ports | `svcinfo lsportfc -delim :` |
 | flashcopy | `svcinfo lsfcmap -delim :` |
 | replication | `svcinfo lsreplicationrelationship -delim :` (fallback: `svcinfo lsrcrelationship -delim :`) |
-| performance | `svcinfo lssystemstats -delim :` |
-
+| performance | `svcinfo lssystemstats -delim :` || batteries | `svcinfo lsenclosurebattery -delim :` |
+| psus | `svcinfo lsenclosurepsu -delim :` |
 El collector `replication` detecta automáticamente si el comando moderno falla con un error que contenga `cmmvc5753e`, `not found`, `unknown command` o `command not recognized`, y en ese caso reintenta con el comando legacy.
 
 ---
