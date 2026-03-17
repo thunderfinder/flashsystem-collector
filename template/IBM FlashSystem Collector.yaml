@@ -15,13 +15,11 @@ zabbix_export:
         Credenciales configuradas en /etc/zabbix/flashsystem/env del servidor.
         Arquitectura: 1 Master Item (External Script) + Dependent Items + LLD.
         1 sola conexion SSH por ciclo de polling.
+        Capacidades de pools convertidas a bytes via preprocessing JavaScript.
       groups:
         - name: Templates
         - name: Templates/SAN
 
-      # -----------------------------------------------------------------------
-      # ITEMS FIJOS
-      # -----------------------------------------------------------------------
       items:
 
         # --- ICMP ---
@@ -41,9 +39,6 @@ zabbix_export:
               description: 'El host no responde a ICMP por 3 checks consecutivos.'
 
         # --- MASTER ITEM ---
-        # Este item ejecuta el collector Go y almacena el JSON completo.
-        # Todos los Dependent Items dependen de este item.
-        # Credenciales NO van en la key — estan en /etc/zabbix/flashsystem/env
         - uuid: d3e4f5a6b7c8490d1e2f3a4b5c6d7e8f
           name: 'FlashSystem: Master Collector JSON'
           type: EXTERNAL
@@ -95,6 +90,7 @@ zabbix_export:
           master_item:
             key: 'flashsystem_collector.sh[{HOST.IP},collect]'
           history: 7d
+          trends: 90d
           value_type: UNSIGNED
           units: ms
           description: 'Duracion total de la recoleccion en milisegundos.'
@@ -175,13 +171,30 @@ zabbix_export:
             key: 'flashsystem_collector.sh[{HOST.IP},collect]'
           history: 7d
           trends: 90d
-          value_type: TEXT
-          units: ''
-          description: 'Capacidad total de MDisk (total_mdisk_capacity). Valor string con unidad (ej: 44.0TB).'
+          value_type: UNSIGNED
+          units: B
+          description: 'Capacidad total de MDisk en bytes (total_mdisk_capacity convertido desde string IBM).'
           preprocessing:
             - type: JSONPATH
               parameters:
                 - '$.system[0].total_mdisk_capacity'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var match = value.match(/^([0-9]+\.?[0-9]*)\s*(TB|GB|MB|KB|B)$/i);
+                  if (!match) {
+                      throw 'Cannot parse capacity value: ' + value;
+                  }
+                  var num = parseFloat(match[1]);
+                  var unit = match[2].toUpperCase();
+                  var multipliers = {
+                      'B':  1,
+                      'KB': 1024,
+                      'MB': 1048576,
+                      'GB': 1073741824,
+                      'TB': 1099511627776
+                  };
+                  return Math.round(num * multipliers[unit]);
           tags:
             - tag: component
               value: system
@@ -194,12 +207,30 @@ zabbix_export:
             key: 'flashsystem_collector.sh[{HOST.IP},collect]'
           history: 7d
           trends: 90d
-          value_type: TEXT
-          description: 'Espacio libre total del sistema (total_free_space). Valor string con unidad.'
+          value_type: UNSIGNED
+          units: B
+          description: 'Espacio libre total en bytes (total_free_space convertido desde string IBM).'
           preprocessing:
             - type: JSONPATH
               parameters:
                 - '$.system[0].total_free_space'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var match = value.match(/^([0-9]+\.?[0-9]*)\s*(TB|GB|MB|KB|B)$/i);
+                  if (!match) {
+                      throw 'Cannot parse capacity value: ' + value;
+                  }
+                  var num = parseFloat(match[1]);
+                  var unit = match[2].toUpperCase();
+                  var multipliers = {
+                      'B':  1,
+                      'KB': 1024,
+                      'MB': 1048576,
+                      'GB': 1073741824,
+                      'TB': 1099511627776
+                  };
+                  return Math.round(num * multipliers[unit]);
           tags:
             - tag: component
               value: system
@@ -213,7 +244,7 @@ zabbix_export:
           history: 7d
           trends: '0'
           value_type: TEXT
-          description: 'Estado de estadisticas de rendimiento (on/off). Si es off, performance no tiene datos.'
+          description: 'Estado de estadisticas de rendimiento (on/off).'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -226,7 +257,7 @@ zabbix_export:
               expression: 'find(/IBM FlashSystem Collector/flashsystem.system.statistics[{HOST.IP}],,"like","on")=0'
               name: '{HOST.NAME}: FlashSystem statistics collection is disabled'
               priority: WARNING
-              description: 'Las estadisticas estan deshabilitadas. Performance metrics no estaran disponibles. Ejecutar svctask startstats en el storage.'
+              description: 'Las estadisticas estan deshabilitadas. Ejecutar svctask startstats en el storage.'
 
         # --- PERFORMANCE ---
         - uuid: d5e6f7a8b9c0412d3e4f5a6b7c8d9e0f
@@ -239,7 +270,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: iops
-          description: 'IOPS de lectura actuales (stat_current de read_io).'
+          description: 'IOPS de lectura actuales.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -261,7 +292,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: iops
-          description: 'IOPS de escritura actuales (stat_current de write_io).'
+          description: 'IOPS de escritura actuales.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -283,7 +314,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: MBps
-          description: 'Throughput de lectura en MB/s (stat_current de read_mb).'
+          description: 'Throughput de lectura en MB/s.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -305,7 +336,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: MBps
-          description: 'Throughput de escritura en MB/s (stat_current de write_mb).'
+          description: 'Throughput de escritura en MB/s.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -327,7 +358,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: ms
-          description: 'Latencia de lectura en ms (stat_current de read_ms).'
+          description: 'Latencia de lectura en ms.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -343,7 +374,6 @@ zabbix_export:
               expression: 'min(/IBM FlashSystem Collector/flashsystem.perf.read_ms[{HOST.IP}],5m)>{$FS_LATENCY_READ_WARN}'
               name: '{HOST.NAME}: High read latency ({ITEM.LASTVALUE})'
               priority: WARNING
-              description: 'La latencia de lectura supera el umbral configurado.'
 
         - uuid: d1e2f3a4b5c6478d9e0f1a2b3c4d5e6f
           name: 'FlashSystem: Write Latency'
@@ -355,7 +385,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: ms
-          description: 'Latencia de escritura en ms (stat_current de write_ms).'
+          description: 'Latencia de escritura en ms.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -371,7 +401,6 @@ zabbix_export:
               expression: 'min(/IBM FlashSystem Collector/flashsystem.perf.write_ms[{HOST.IP}],5m)>{$FS_LATENCY_WRITE_WARN}'
               name: '{HOST.NAME}: High write latency ({ITEM.LASTVALUE})'
               priority: WARNING
-              description: 'La latencia de escritura supera el umbral configurado.'
 
         - uuid: f3a4b5c6d7e8490f1a2b3c4d5e6f7a8b
           name: 'FlashSystem: CPU Usage'
@@ -383,7 +412,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: '%'
-          description: 'Porcentaje de uso de CPU del sistema (stat_current de cpu_pc).'
+          description: 'Porcentaje de uso de CPU del sistema.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -399,7 +428,6 @@ zabbix_export:
               expression: 'min(/IBM FlashSystem Collector/flashsystem.perf.cpu_pc[{HOST.IP}],5m)>{$FS_CPU_WARN}'
               name: '{HOST.NAME}: High CPU usage ({ITEM.LASTVALUE}%)'
               priority: WARNING
-              description: 'El uso de CPU supera el umbral configurado.'
 
         - uuid: b5c6d7e8f9a0412b3c4d5e6f7a8b9c0d
           name: 'FlashSystem: FC Throughput'
@@ -411,7 +439,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: MBps
-          description: 'Throughput total Fibre Channel en MB/s (stat_current de fc_mb).'
+          description: 'Throughput total Fibre Channel en MB/s.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -433,7 +461,7 @@ zabbix_export:
           trends: 90d
           value_type: UNSIGNED
           units: iops
-          description: 'IOPS totales Fibre Channel (stat_current de fc_io).'
+          description: 'IOPS totales Fibre Channel.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -450,7 +478,7 @@ zabbix_export:
       # -----------------------------------------------------------------------
       discovery_rules:
 
-        # --- DISCOVERY: POOLS (equivalente a MDiskGroups del template original) ---
+        # --- DISCOVERY: POOLS ---
         - uuid: d7e8f9a0b1c2434d5e6f7a8b9c0d1e2f
           name: 'Discover Storage Pools'
           type: EXTERNAL
@@ -458,9 +486,12 @@ zabbix_export:
           delay: '{$FS_DISCOVERY_INTERVAL}'
           lifetime: 3d
           description: |
-            LLD de pools de almacenamiento (lsmdiskgrp).
-            Macros disponibles: {#POOLID}, {#POOLNAME}, {#POOLSTATUS}
+            LLD de pools (lsmdiskgrp).
+            Macros: {#POOLID}, {#POOLNAME}, {#POOLSTATUS}
+            Capacidades convertidas a bytes via preprocessing JavaScript.
           item_prototypes:
+
+            # Estado del pool
             - uuid: e8f9a0b1c2d3445e6f7a8b9c0d1e2f3a
               name: 'Pool {#POOLNAME}: Status'
               type: DEPENDENT
@@ -470,7 +501,7 @@ zabbix_export:
               history: 7d
               trends: '0'
               value_type: TEXT
-              description: 'Estado del pool {#POOLNAME} (online/offline/degraded).'
+              description: 'Estado del pool {#POOLNAME}.'
               preprocessing:
                 - type: JSONPATH
                   parameters:
@@ -486,8 +517,8 @@ zabbix_export:
                   expression: 'find(/IBM FlashSystem Collector/flashsystem.pool.status[{HOST.IP},{#POOLNAME}],,"like","online")=0'
                   name: '{HOST.NAME}: Pool {#POOLNAME} is not online'
                   priority: HIGH
-                  description: 'El pool de almacenamiento no esta en estado online.'
 
+            # Capacidad total en bytes
             - uuid: a0b1c2d3e4f5467a8b9c0d1e2f3a4b5c
               name: 'Pool {#POOLNAME}: Total Capacity'
               type: DEPENDENT
@@ -496,8 +527,11 @@ zabbix_export:
                 key: 'flashsystem_collector.sh[{HOST.IP},collect]'
               history: 7d
               trends: 90d
-              value_type: TEXT
-              description: 'Capacidad total del pool {#POOLNAME}. Valor string con unidad (ej: 44.0TB).'
+              value_type: UNSIGNED
+              units: B
+              description: |
+                Capacidad total del pool {#POOLNAME} en bytes.
+                Convertida desde string IBM (ej: "44.0TB") via JavaScript.
               preprocessing:
                 - type: JSONPATH
                   parameters:
@@ -505,10 +539,28 @@ zabbix_export:
                 - type: TRIM
                   parameters:
                     - ' '
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var match = value.match(/^([0-9]+\.?[0-9]*)\s*(TB|GB|MB|KB|B)$/i);
+                      if (!match) {
+                          throw 'Cannot parse capacity value: ' + value;
+                      }
+                      var num = parseFloat(match[1]);
+                      var unit = match[2].toUpperCase();
+                      var multipliers = {
+                          'B':  1,
+                          'KB': 1024,
+                          'MB': 1048576,
+                          'GB': 1073741824,
+                          'TB': 1099511627776
+                      };
+                      return Math.round(num * multipliers[unit]);
               tags:
                 - tag: component
                   value: pool
 
+            # Capacidad libre en bytes
             - uuid: b1c2d3e4f5a6478b9c0d1e2f3a4b5c6d
               name: 'Pool {#POOLNAME}: Free Capacity'
               type: DEPENDENT
@@ -517,8 +569,11 @@ zabbix_export:
                 key: 'flashsystem_collector.sh[{HOST.IP},collect]'
               history: 7d
               trends: 90d
-              value_type: TEXT
-              description: 'Capacidad libre del pool {#POOLNAME}. Valor string con unidad.'
+              value_type: UNSIGNED
+              units: B
+              description: |
+                Capacidad libre del pool {#POOLNAME} en bytes.
+                Convertida desde string IBM via JavaScript.
               preprocessing:
                 - type: JSONPATH
                   parameters:
@@ -526,10 +581,28 @@ zabbix_export:
                 - type: TRIM
                   parameters:
                     - ' '
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var match = value.match(/^([0-9]+\.?[0-9]*)\s*(TB|GB|MB|KB|B)$/i);
+                      if (!match) {
+                          throw 'Cannot parse capacity value: ' + value;
+                      }
+                      var num = parseFloat(match[1]);
+                      var unit = match[2].toUpperCase();
+                      var multipliers = {
+                          'B':  1,
+                          'KB': 1024,
+                          'MB': 1048576,
+                          'GB': 1073741824,
+                          'TB': 1099511627776
+                      };
+                      return Math.round(num * multipliers[unit]);
               tags:
                 - tag: component
                   value: pool
 
+            # Capacidad usada en bytes
             - uuid: c2d3e4f5a6b7489c0d1e2f3a4b5c6d7e
               name: 'Pool {#POOLNAME}: Used Capacity'
               type: DEPENDENT
@@ -538,8 +611,11 @@ zabbix_export:
                 key: 'flashsystem_collector.sh[{HOST.IP},collect]'
               history: 7d
               trends: 90d
-              value_type: TEXT
-              description: 'Capacidad usada del pool {#POOLNAME}. Valor string con unidad.'
+              value_type: UNSIGNED
+              units: B
+              description: |
+                Capacidad usada del pool {#POOLNAME} en bytes.
+                Convertida desde string IBM via JavaScript.
               preprocessing:
                 - type: JSONPATH
                   parameters:
@@ -547,40 +623,74 @@ zabbix_export:
                 - type: TRIM
                   parameters:
                     - ' '
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var match = value.match(/^([0-9]+\.?[0-9]*)\s*(TB|GB|MB|KB|B)$/i);
+                      if (!match) {
+                          throw 'Cannot parse capacity value: ' + value;
+                      }
+                      var num = parseFloat(match[1]);
+                      var unit = match[2].toUpperCase();
+                      var multipliers = {
+                          'B':  1,
+                          'KB': 1024,
+                          'MB': 1048576,
+                          'GB': 1073741824,
+                          'TB': 1099511627776
+                      };
+                      return Math.round(num * multipliers[unit]);
               tags:
                 - tag: component
                   value: pool
 
+            # Porcentaje de uso — Calculated Item
+            # Fórmula: 100 * used / capacity
+            # Depende de los dos items anteriores siendo numericos.
             - uuid: d3e4f5a6b7c8490d1e2f3a4b5c6d7e8f
-              name: 'Pool {#POOLNAME}: Overallocation'
-              type: DEPENDENT
-              key: 'flashsystem.pool.overallocation[{HOST.IP},{#POOLNAME}]'
-              master_item:
-                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              name: 'Pool {#POOLNAME}: Usage Percent'
+              type: CALCULATED
+              key: 'flashsystem.pool.pct[{HOST.IP},{#POOLNAME}]'
+              delay: '{$FS_COLLECT_INTERVAL}'
               history: 7d
               trends: 90d
-              value_type: TEXT
-              description: 'Porcentaje de sobreasignacion del pool {#POOLNAME}.'
-              preprocessing:
-                - type: JSONPATH
-                  parameters:
-                    - '$.pools[?(@.name==''{#POOLNAME}'')].overallocation'
-                - type: TRIM
-                  parameters:
-                    - ' '
+              value_type: FLOAT
+              units: '%'
+              params: '100*last(//flashsystem.pool.used[{HOST.IP},{#POOLNAME}])/last(//flashsystem.pool.capacity[{HOST.IP},{#POOLNAME}])'
+              description: |
+                Porcentaje de uso del pool {#POOLNAME}.
+                Calculado como: 100 * used_capacity / capacity.
+                Requiere que los items de capacidad hayan recibido al menos un valor.
               tags:
                 - tag: component
                   value: pool
+              trigger_prototypes:
+                - uuid: e4f5a6b7c8d9401e2f3a4b5c6d7e8f9a
+                  expression: 'last(/IBM FlashSystem Collector/flashsystem.pool.pct[{HOST.IP},{#POOLNAME}])>={$FS_POOL_CRIT_PCT}'
+                  name: '{HOST.NAME}: Pool {#POOLNAME} usage critical ({ITEM.LASTVALUE}%)'
+                  priority: HIGH
+                  description: 'El uso del pool supera el umbral critico configurado en {$FS_POOL_CRIT_PCT}%.'
+                  manual_close: 'YES'
+                - uuid: f5a6b7c8d9e0412f3a4b5c6d7e8f9a0b
+                  expression: |
+                    last(/IBM FlashSystem Collector/flashsystem.pool.pct[{HOST.IP},{#POOLNAME}])>={$FS_POOL_WARN_PCT}
+                    and
+                    last(/IBM FlashSystem Collector/flashsystem.pool.pct[{HOST.IP},{#POOLNAME}])<{$FS_POOL_CRIT_PCT}
+                  name: '{HOST.NAME}: Pool {#POOLNAME} usage warning ({ITEM.LASTVALUE}%)'
+                  priority: WARNING
+                  description: 'El uso del pool supera el umbral de advertencia configurado en {$FS_POOL_WARN_PCT}%.'
+                  manual_close: 'YES'
 
-            - uuid: e4f5a6b7c8d9401e2f3a4b5c6d7e8f9a
-              name: 'Pool {#POOLNAME}: VDisk Count'
+            # VDisk count
+            - uuid: a6b7c8d9e0f1423a4b5c6d7e8f9a0b1c
+              name: 'Pool {#POOLNAME}: Volume Count'
               type: DEPENDENT
               key: 'flashsystem.pool.vdisk_count[{HOST.IP},{#POOLNAME}]'
               master_item:
                 key: 'flashsystem_collector.sh[{HOST.IP},collect]'
               history: 7d
               trends: 90d
-              value_type: TEXT
+              value_type: UNSIGNED
               description: 'Cantidad de volumenes en el pool {#POOLNAME}.'
               preprocessing:
                 - type: JSONPATH
@@ -602,9 +712,9 @@ zabbix_export:
           lifetime: 3d
           description: |
             LLD de drives fisicos (lsdrive).
-            Macros disponibles: {#DRIVEID}, {#ENCLOSUREID}, {#SLOTID}, {#DRIVESTATUS}, {#DRIVETYPE}, {#DRIVECAPACITY}
+            Macros: {#DRIVEID}, {#ENCLOSUREID}, {#SLOTID}, {#DRIVESTATUS}, {#DRIVETYPE}, {#DRIVECAPACITY}
           item_prototypes:
-            - uuid: a6b7c8d9e0f1423a4b5c6d7e8f9a0b1c
+            - uuid: a6b7c8d9e0f1423a4b5c6d7e8f9a0b1d
               name: 'Drive {#DRIVEID} (Enc {#ENCLOSUREID}/Slot {#SLOTID}): Status'
               type: DEPENDENT
               key: 'flashsystem.drive.status[{HOST.IP},{#DRIVEID}]'
@@ -613,7 +723,7 @@ zabbix_export:
               history: 7d
               trends: '0'
               value_type: TEXT
-              description: 'Estado del drive {#DRIVEID} en enclosure {#ENCLOSUREID} slot {#SLOTID}.'
+              description: 'Estado del drive {#DRIVEID} en enclosure {#ENCLOSUREID} slot {#SLOTID}. Tipo: {#DRIVETYPE}.'
               preprocessing:
                 - type: JSONPATH
                   parameters:
@@ -625,7 +735,7 @@ zabbix_export:
                 - tag: component
                   value: drive
               trigger_prototypes:
-                - uuid: b7c8d9e0f1a2434b5c6d7e8f9a0b1c2d
+                - uuid: b7c8d9e0f1a2434b5c6d7e8f9a0b1c2e
                   expression: 'find(/IBM FlashSystem Collector/flashsystem.drive.status[{HOST.IP},{#DRIVEID}],,"like","online")=0'
                   name: '{HOST.NAME}: Drive {#DRIVEID} (Enc {#ENCLOSUREID}/Slot {#SLOTID}) not online'
                   priority: HIGH
@@ -640,7 +750,7 @@ zabbix_export:
           lifetime: 3d
           description: |
             LLD de volumenes virtuales (lsvdisk).
-            Macros disponibles: {#VOLUMEID}, {#VOLUMENAME}, {#VOLUMESTATUS}, {#VOLUMEPOOL}
+            Macros: {#VOLUMEID}, {#VOLUMENAME}, {#VOLUMESTATUS}, {#VOLUMEPOOL}
           item_prototypes:
             - uuid: d9e0f1a2b3c4456d7e8f9a0b1c2d3e4f
               name: 'Volume {#VOLUMENAME}: Status'
@@ -667,7 +777,6 @@ zabbix_export:
                   expression: 'find(/IBM FlashSystem Collector/flashsystem.volume.status[{HOST.IP},{#VOLUMEID}],,"like","online")=0'
                   name: '{HOST.NAME}: Volume {#VOLUMENAME} not online'
                   priority: HIGH
-                  description: 'El volumen virtual no esta en estado online.'
 
         # --- DISCOVERY: ENCLOSURES ---
         - uuid: f1a2b3c4d5e6478f9a0b1c2d3e4f5a6b
@@ -678,7 +787,7 @@ zabbix_export:
           lifetime: 3d
           description: |
             LLD de enclosures fisicos (lsenclosure).
-            Macros disponibles: {#ENCLOSUREID}, {#ENCLOSURESTATUS}, {#ENCLOSUREMODEL}
+            Macros: {#ENCLOSUREID}, {#ENCLOSURESTATUS}, {#ENCLOSUREMODEL}
           item_prototypes:
             - uuid: a2b3c4d5e6f7489a0b1c2d3e4f5a6b7c
               name: 'Enclosure {#ENCLOSUREID} ({#ENCLOSUREMODEL}): Status'
@@ -705,7 +814,6 @@ zabbix_export:
                   expression: 'find(/IBM FlashSystem Collector/flashsystem.enclosure.status[{HOST.IP},{#ENCLOSUREID}],,"like","online")=0'
                   name: '{HOST.NAME}: Enclosure {#ENCLOSUREID} not online'
                   priority: HIGH
-                  description: 'El enclosure fisico no esta en estado online.'
 
         # --- DISCOVERY: NODES ---
         - uuid: c4d5e6f7a8b9401c2d3e4f5a6b7c8d9e
@@ -716,7 +824,7 @@ zabbix_export:
           lifetime: 3d
           description: |
             LLD de nodos canisters (lsnode).
-            Macros disponibles: {#NODEID}, {#NODENAME}, {#NODESTATUS}, {#NODEIOGROUP}
+            Macros: {#NODEID}, {#NODENAME}, {#NODESTATUS}, {#NODEIOGROUP}
           item_prototypes:
             - uuid: d5e6f7a8b9c0412d3e4f5a6b7c8d9e0f
               name: 'Node {#NODENAME} (IO Group {#NODEIOGROUP}): Status'
@@ -743,7 +851,6 @@ zabbix_export:
                   expression: 'find(/IBM FlashSystem Collector/flashsystem.node.status[{HOST.IP},{#NODEID}],,"like","online")=0'
                   name: '{HOST.NAME}: Node {#NODENAME} not online'
                   priority: HIGH
-                  description: 'El nodo canister no esta en estado online.'
 
         # --- DISCOVERY: FC PORTS ---
         - uuid: f7a8b9c0d1e2434f5a6b7c8d9e0f1a2b
@@ -754,7 +861,7 @@ zabbix_export:
           lifetime: 3d
           description: |
             LLD de puertos Fibre Channel (lsportfc).
-            Macros disponibles: {#PORTID}, {#WWPN}, {#PORTSTATUS}, {#PORTNODENAME}, {#PORTSPEED}
+            Macros: {#PORTID}, {#WWPN}, {#PORTSTATUS}, {#PORTNODENAME}, {#PORTSPEED}
           item_prototypes:
             - uuid: a8b9c0d1e2f3445a6b7c8d9e0f1a2b3c
               name: 'FC Port {#PORTID} ({#WWPN}) on {#PORTNODENAME}: Status'
@@ -765,7 +872,7 @@ zabbix_export:
               history: 7d
               trends: '0'
               value_type: TEXT
-              description: 'Estado del puerto FC {#PORTID} WWPN {#WWPN} en nodo {#PORTNODENAME}.'
+              description: 'Estado del puerto FC {#PORTID} WWPN {#WWPN} en nodo {#PORTNODENAME}. Velocidad: {#PORTSPEED}.'
               preprocessing:
                 - type: JSONPATH
                   parameters:
@@ -781,7 +888,7 @@ zabbix_export:
                   expression: 'find(/IBM FlashSystem Collector/flashsystem.port.status[{HOST.IP},{#PORTID}],,"like","active")=0'
                   name: '{HOST.NAME}: FC Port {#PORTID} ({#WWPN}) on {#PORTNODENAME} not active'
                   priority: AVERAGE
-                  description: 'El puerto FC no esta en estado active. Puede indicar cable desconectado o fallo de switch.'
+                  description: 'El puerto FC no esta en estado active.'
 
       # -----------------------------------------------------------------------
       # MACROS
@@ -789,19 +896,19 @@ zabbix_export:
       macros:
         - macro: '{$FS_COLLECT_INTERVAL}'
           value: '60'
-          description: 'Intervalo de recoleccion del Master Item en segundos.'
+          description: 'Intervalo del Master Item en segundos.'
         - macro: '{$FS_TIMEOUT}'
           value: '55'
-          description: 'Timeout del External Script en segundos. Debe ser menor que FS_COLLECT_INTERVAL.'
+          description: 'Timeout del External Script. Debe ser menor que FS_COLLECT_INTERVAL.'
         - macro: '{$FS_DISCOVERY_INTERVAL}'
           value: 4h
-          description: 'Intervalo de discovery LLD. Coincide con DiscoveryTTL del collector.'
+          description: 'Intervalo de LLD discovery. Debe coincidir con DiscoveryTTL del collector.'
         - macro: '{$FS_POOL_WARN_PCT}'
           value: '80'
-          description: 'Umbral WARNING de uso de pool en porcentaje. NO usado actualmente (capacidades son string).'
+          description: 'Umbral WARNING de uso de pool en porcentaje (0-100).'
         - macro: '{$FS_POOL_CRIT_PCT}'
           value: '90'
-          description: 'Umbral CRITICO de uso de pool en porcentaje. NO usado actualmente (capacidades son string).'
+          description: 'Umbral CRITICO de uso de pool en porcentaje (0-100).'
         - macro: '{$FS_LATENCY_READ_WARN}'
           value: '10'
           description: 'Umbral WARNING de latencia de lectura en ms.'
