@@ -10,6 +10,7 @@ import (
 	"github.com/flashsystem-collector/internal/cache"
 	"github.com/flashsystem-collector/internal/collectors"
 	"github.com/flashsystem-collector/internal/config"
+	"github.com/flashsystem-collector/internal/parser"
 	internalssh "github.com/flashsystem-collector/internal/ssh"
 	"github.com/flashsystem-collector/internal/zabbix"
 )
@@ -198,7 +199,7 @@ func runDiscoveryCollector(
 	client *internalssh.Client,
 	category string,
 	cfg *config.Config,
-) ([]map[string]string, map[string]string, error) {
+) ([]parser.Record, map[string]string, error) {
 
 	type collectorEntry struct {
 		col      collectors.Collector
@@ -242,9 +243,7 @@ func runDiscoveryCollector(
 		return nil, nil, fmt.Errorf("collector %q failed: %w", category, err)
 	}
 
-	// Convertir parser.Record a map[string]string para LLD.
-	items := recordsToLLDItems(parserRecords, entry.fieldMap)
-	return items, entry.fieldMap, nil
+	return parserRecords, entry.fieldMap, nil
 }
 
 // buildFromStaleCache construye un output usando únicamente datos expirados del cache.
@@ -270,17 +269,17 @@ func buildFromStaleCache(
 		if !ok {
 			results[name] = collectors.Result{
 				Name:    name,
-				Records: []map[string]string{},
+				Records: []parser.Record{},
 				Error:   fmt.Sprintf("SSH failed and no cache available: %v", sshErr),
 			}
 			continue
 		}
 
-		var records []map[string]string
+		var records []parser.Record
 		if err := entry.Unmarshal(&records); err != nil {
 			results[name] = collectors.Result{
 				Name:    name,
-				Records: []map[string]string{},
+				Records: []parser.Record{},
 				Error:   fmt.Sprintf("SSH failed and cache corrupted: %v", sshErr),
 			}
 			continue
@@ -392,29 +391,12 @@ func emitLLDFromCache(items []map[string]string) {
 // recordsToLLDItems convierte []parser.Record a []map[string]string
 // usando el fieldMap para traducir nombres de campo a macros Zabbix.
 func recordsToLLDItems(
-	records interface{},
+	records []parser.Record,
 	fieldMap map[string]string,
 ) []map[string]string {
 
-	// Soportar tanto []parser.Record como []map[string]string como input.
-	var rawRecords []map[string]string
-
-	switch v := records.(type) {
-	case []map[string]string:
-		rawRecords = v
-	default:
-		// Serializar y deserializar para normalizar el tipo.
-		data, err := json.Marshal(records)
-		if err != nil {
-			return []map[string]string{}
-		}
-		if err := json.Unmarshal(data, &rawRecords); err != nil {
-			return []map[string]string{}
-		}
-	}
-
-	items := make([]map[string]string, 0, len(rawRecords))
-	for _, record := range rawRecords {
+	items := make([]map[string]string, 0, len(records))
+	for _, record := range records {
 		item := make(map[string]string, len(fieldMap))
 		for field, macro := range fieldMap {
 			if val, ok := record[field]; ok {

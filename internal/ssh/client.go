@@ -57,7 +57,7 @@ func New(cfg ClientConfig) (*Client, error) {
 		Timeout:         cfg.DialTimeout,
 	}
 
-	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	addr := net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", cfg.Port))
 
 	// Usar net.DialTimeout para controlar el timeout de red de forma explícita,
 	// luego pasar el conn al cliente SSH. Esto evita que ssh.Dial ignore
