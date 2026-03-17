@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -187,27 +188,36 @@ func buildAuthMethod(cfg ClientConfig) (ssh.AuthMethod, error) {
 // Si InsecureHostKey es true, deshabilita la verificación (solo para testing/redes aisladas).
 // Si KnownHostsFile está configurado, usa ese archivo.
 // Si ninguno está configurado y InsecureHostKey es false, retorna error.
-func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 
+func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 	if cfg.InsecureHostKey {
-		// ADVERTENCIA: vulnerable a MITM. Solo para entornos controlados.
 		return ssh.InsecureIgnoreHostKey(), nil //nolint:gosec
 	}
 
 	if cfg.KnownHostsFile != "" {
 		cb, err := knownhosts.New(cfg.KnownHostsFile)
 		if err != nil {
-			return nil, fmt.Errorf("cannot load known_hosts from %q: %w", cfg.KnownHostsFile, err)
+			return nil, fmt.Errorf("cannot load known_hosts from %q: %w",
+				cfg.KnownHostsFile, err)
 		}
 		return cb, nil
 	}
 
-	// Sin InsecureHostKey y sin KnownHostsFile: no hay forma segura de verificar.
-	// Para producción se debe proveer uno de los dos.
-	// Como compromiso seguro, retornamos error en lugar de asumir insecure.
+	// NUEVO: intentar fallback a ~/.ssh/known_hosts del usuario que ejecuta el proceso
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		defaultKnownHosts := filepath.Join(homeDir, ".ssh", "known_hosts")
+		if _, err := os.Stat(defaultKnownHosts); err == nil {
+			cb, err := knownhosts.New(defaultKnownHosts)
+			if err == nil {
+				return cb, nil
+			}
+		}
+	}
+
 	return nil, fmt.Errorf(
 		"SSH host key verification not configured: " +
-			"use -insecure flag (for isolated networks) or " +
-			"-known-hosts /path/to/known_hosts (for production)",
+			"use -insecure (isolated networks) or " +
+			"-known-hosts /path/to/known_hosts (production)",
 	)
 }

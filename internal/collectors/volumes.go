@@ -41,7 +41,7 @@ func (c *VolumesCollector) TTL() time.Duration {
 //
 // Implementa Collector.
 func (c *VolumesCollector) Collect(client *internalssh.Client) ([]parser.Record, error) {
-	output, err := client.Run("svcinfo lsvdisk -delim :")
+	output, err := client.Run("svcinfo lsvdisk -bytes -delim :")
 	if err != nil {
 		return nil, fmt.Errorf("volumes collector: %w", err)
 	}

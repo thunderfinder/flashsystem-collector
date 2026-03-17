@@ -202,6 +202,7 @@ type staleResult struct {
 
 // AllCollectors retorna la lista completa de collectors para un FlashSystem.
 // Esta es la función de registro central — agregar aquí nuevos collectors.
+// DESPUÉS — agregar batteries y psus
 func AllCollectors(metricsTTL, discoveryTTL, performanceTTL time.Duration) []Collector {
 	return []Collector{
 		NewSystemCollector(metricsTTL),
@@ -214,6 +215,8 @@ func AllCollectors(metricsTTL, discoveryTTL, performanceTTL time.Duration) []Col
 		NewFlashCopyCollector(metricsTTL),
 		NewReplicationCollector(metricsTTL),
 		NewPerformanceCollector(performanceTTL),
+		NewBatteriesCollector(discoveryTTL), // NUEVO
+		NewPSUsCollector(discoveryTTL),      // NUEVO
 	}
 }
 

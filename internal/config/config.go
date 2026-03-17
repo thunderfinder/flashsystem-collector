@@ -102,6 +102,7 @@ func Load() (*Config, error) {
 	maxJSON := flag.Int("max-json-bytes", 0, "Max JSON output size in bytes, default 1MB (env: FS_MAX_JSON_BYTES)")
 	maxVols := flag.Int("max-volumes", 0, "Max volumes in output, default 500 (env: FS_MAX_VOLUMES)")
 	maxDrives := flag.Int("max-drives", 0, "Max drives in output, default 500 (env: FS_MAX_DRIVES)")
+	perfTTL := flag.Duration("perf-ttl", 0, "Cache TTL for performance, default 60s (env: FS_PERF_TTL)")
 
 	flag.Parse()
 
@@ -153,6 +154,9 @@ func Load() (*Config, error) {
 	}
 	if *maxDrives != 0 {
 		cfg.Limits.MaxDrives = *maxDrives
+	}
+	if *perfTTL != 0 {
+		cfg.Cache.PerformanceTTL = *perfTTL
 	}
 
 	// --- Aplicar variables de entorno (solo si el flag no fue seteado) ---
@@ -302,6 +306,10 @@ func (cfg *Config) validate() error {
 
 	if cfg.Cache.DiscoveryTTL < time.Minute {
 		return fmt.Errorf("discovery-ttl must be >= 1m, got %s", cfg.Cache.DiscoveryTTL)
+	}
+
+	if cfg.Cache.PerformanceTTL < time.Second {
+		return fmt.Errorf("performance-ttl must be >= 1s, got %s", cfg.Cache.PerformanceTTL)
 	}
 
 	if cfg.Limits.MaxJSONBytes < 1024 {

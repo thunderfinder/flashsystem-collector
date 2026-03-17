@@ -231,6 +231,14 @@ func runDiscoveryCollector(
 			col:      collectors.NewPortsCollector(cfg.Cache.DiscoveryTTL),
 			fieldMap: zabbix.PortLLDFields,
 		},
+		"batteries": {
+			col:      collectors.NewBatteriesCollector(cfg.Cache.DiscoveryTTL),
+			fieldMap: zabbix.BatteryLLDFields,
+		},
+		"psus": {
+			col:      collectors.NewPSUsCollector(cfg.Cache.DiscoveryTTL),
+			fieldMap: zabbix.PSULLDFields,
+		},
 	}
 
 	entry, ok := available[category]
@@ -258,7 +266,7 @@ func buildFromStaleCache(
 	collectorNames := []string{
 		"system", "nodes", "enclosures", "drives",
 		"pools", "volumes", "ports", "flashcopy",
-		"replication", "performance",
+		"replication", "performance", "batteries", "psus",
 	}
 
 	results := make(map[string]collectors.Result, len(collectorNames))

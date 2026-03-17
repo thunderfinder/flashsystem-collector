@@ -38,7 +38,7 @@ func (c *DrivesCollector) TTL() time.Duration {
 //
 // Implementa Collector.
 func (c *DrivesCollector) Collect(client *internalssh.Client) ([]parser.Record, error) {
-	output, err := client.Run("svcinfo lsdrive -delim :")
+	output, err := client.Run("svcinfo lsdrive -bytes -delim :")
 	if err != nil {
 		return nil, fmt.Errorf("drives collector: %w", err)
 	}

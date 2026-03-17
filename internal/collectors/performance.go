@@ -68,8 +68,12 @@ func (c *PerformanceCollector) Collect(client *internalssh.Client) ([]parser.Rec
 
 	result := parser.Parse(output)
 
+	// DESPUÉS — mensaje mejorado con los stats críticos ausentes
 	if result.Format == parser.FormatEmpty {
-		return nil, fmt.Errorf("performance collector: empty response from lssystemstats (statistics may be disabled — run 'svctask startstats')")
+		return nil, fmt.Errorf(
+			"performance collector: empty response from lssystemstats " +
+				"(statistics disabled — run 'svctask startstats -interval 5' on the FlashSystem; " +
+				"critical stats missing: write_cache_pc, total_cache_pc, temp_c, cpu_pc)")
 	}
 
 	return result.Records, nil
