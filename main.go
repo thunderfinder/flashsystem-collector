@@ -118,7 +118,7 @@ func runCollect() {
 // Uso desde Zabbix: flashsystem-collector discover -host ... -category drives
 func runDiscover() {
 	// Flag adicional para discover.
-	category := flag.String("category", "", "Discovery category: drives|pools|volumes|enclosures|nodes|ports")
+	category := flag.String("category", "", "Discovery category: drives|pools|volumes|enclosures|nodes|ports|batteries|psus")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -126,7 +126,7 @@ func runDiscover() {
 	}
 
 	if *category == "" {
-		fatalLLD("discover requires -category flag: drives|pools|volumes|enclosures|nodes|ports")
+		fatalLLD("discover requires -category flag: drives|pools|volumes|enclosures|nodes|ports|batteries|psus")
 	}
 
 	// Inicializar cache con TTL de discovery (largo).
@@ -243,7 +243,7 @@ func runDiscoveryCollector(
 
 	entry, ok := available[category]
 	if !ok {
-		return nil, nil, fmt.Errorf("unknown discovery category %q: valid values are drives|pools|volumes|enclosures|nodes|ports", category)
+		return nil, nil, fmt.Errorf("unknown discovery category %q: valid values are drives|pools|volumes|enclosures|nodes|ports|batteries|psus", category)
 	}
 
 	parserRecords, err := entry.col.Collect(client)

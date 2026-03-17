@@ -121,6 +121,16 @@ sudo -u zabbix \
 sudo -u zabbix \
     /usr/lib/zabbix/externalscripts/flashsystem_collector.sh \
     10.10.10.50 discover drives
+
+# Probar discovery de baterías
+sudo -u zabbix \
+    /usr/lib/zabbix/externalscripts/flashsystem_collector.sh \
+    10.10.10.50 discover batteries
+
+# Probar discovery de PSUs
+sudo -u zabbix \
+    /usr/lib/zabbix/externalscripts/flashsystem_collector.sh \
+    10.10.10.50 discover psus
 ```
 
 ---
@@ -161,6 +171,14 @@ Update interval: 4h
 # Ports
 Key: flashsystem_collector.sh[{HOST.IP},discover,ports]
 Update interval: 4h
+
+# Batteries
+Key: flashsystem_collector.sh[{HOST.IP},discover,batteries]
+Update interval: 4h
+
+# PSUs
+Key: flashsystem_collector.sh[{HOST.IP},discover,psus]
+Update interval: 4h
 ```
 
 ### Dependent Items (ejemplos)
@@ -181,6 +199,14 @@ Preprocessing:  JSONPath: $.pools[?(@.name=='{#POOLNAME}')].free_capacity
 # Estado de drive (con LLD)
 Key:            flashsystem.drive.status[{HOST.IP},{#DRIVEID}]
 Preprocessing:  JSONPath: $.drives[?(@.id=='{#DRIVEID}')].status
+
+# Estado de batería (con LLD)
+Key:            flashsystem.battery.status[{HOST.IP},{#BATTERYID}]
+Preprocessing:  JSONPath: $.batteries[?(@.battery_id=='{#BATTERYID}')].status
+
+# Estado PSU (con LLD)
+Key:            flashsystem.psu.status[{HOST.IP},{#PSUID}]
+Preprocessing:  JSONPath: $.psus[?(@.psu_id=='{#PSUID}')].status
 ```
 
 ---
@@ -221,11 +247,13 @@ flashsystem-collector/
 │   │   ├── ports.go
 │   │   ├── flashcopy.go
 │   │   ├── replication.go
-│   │   └── performance.go
+│   │   ├── performance.go
+│   │   ├── batteries.go
+│   │   └── psus.go
 │   └── zabbix/output.go
 ├── scripts/
 │   └── flashsystem_collector.sh
-└── README_INSTALACION.md
+└── README.md
 ```
 
 ---
