@@ -31,6 +31,7 @@ zabbix_export:
           - Agregados: write_cache_pc, total_cache_pc, temp_c, power_w
           - LLD macros en JSONPath con comillas dobles
           - Thresholds de latencia ajustados para flash (2ms warn / 10ms crit)
+          - LLD completo: 8 categorias (drives, pools, volumes, enclosures, nodes, ports, batteries, psus)
       groups:
         - name: Templates
         - name: Templates/SAN
@@ -1140,6 +1141,120 @@ zabbix_export:
                   priority: AVERAGE
                   description: 'Puerto FC {#PORTID} no esta en estado active. Velocidad configurada: {#PORTSPEED}.'
 
+        # ==== DISCOVERY: BATTERIES ====
+        - uuid: a8d9e0f1a2b3053a8b9c0d1e2f3a4b5d7
+          name: 'Discover Enclosure Batteries'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,batteries]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de baterias UPS via lsenclosurebattery.
+            Macros: {#BATTERYID}, {#ENCLOSUREID}, {#BATTERYSTATUS}, {#BATTERYHEALTH}
+          item_prototypes:
+            - uuid: b9e0f1a2b3c4064b9c0d1e2f3a4b5c6d
+              name: 'Battery {#BATTERYID} (Enclosure {#ENCLOSUREID}): Status'
+              type: DEPENDENT
+              key: 'flashsystem.battery.status[{HOST.IP},{#BATTERYID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: |
+                Estado de la bateria UPS {#BATTERYID} en enclosure {#ENCLOSUREID}.
+                FIX #1: .first() | FIX #8: comillas dobles.
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.batteries[?(@.id=="{#BATTERYID}")].status.first()'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: battery
+              trigger_prototypes:
+                - uuid: c0f1a2b3c4d5075c0d1e2f3a4b5c6d7e
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.battery.status[{HOST.IP},{#BATTERYID}],,"like","online")=0'
+                  name: '{HOST.NAME}: Battery {#BATTERYID} (Enclosure {#ENCLOSUREID}) not online'
+                  priority: HIGH
+                  description: 'Bateria UPS no esta en estado online. Accion inmediata requerida para continuidad de servicio.'
+
+            - uuid: c1f1a2b3c4d5075c1d1e2f3a4b5c6d7e
+              name: 'Battery {#BATTERYID}: Health Score'
+              type: DEPENDENT
+              key: 'flashsystem.battery.health[{HOST.IP},{#BATTERYID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: 90d
+              value_type: UNSIGNED
+              units: '%'
+              description: 'Puntuacion de salud de la bateria {#BATTERYID}. Valores < 70% indican degradacion significativa.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.batteries[?(@.id=="{#BATTERYID}")].health_score.first()'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: battery
+              trigger_prototypes:
+                - uuid: d2f1a2b3c4d5086d2d1e2f3a4b5c6d7e
+                  expression: 'max(/IBM FlashSystem Collector/flashsystem.battery.health[{HOST.IP},{#BATTERYID}],5m)<{$FS_BATTERY_HEALTH_WARN}'
+                  name: '{HOST.NAME}: Battery {#BATTERYID} health degraded ({ITEM.LASTVALUE}%)'
+                  priority: WARNING
+                  description: 'Salud de bateria UPS baja. Considerar reemplazo dentro de un plan de mantenimiento.'
+                - uuid: e3f1a2b3c4d5097e3d1e2f3a4b5c6d7e
+                  expression: 'max(/IBM FlashSystem Collector/flashsystem.battery.health[{HOST.IP},{#BATTERYID}],5m)<{$FS_BATTERY_HEALTH_CRIT}'
+                  name: '{HOST.NAME}: Battery {#BATTERYID} CRITICAL health ({ITEM.LASTVALUE}%)'
+                  priority: HIGH
+                  description: 'Salud critica de bateria UPS. Reemplazo urgente requerido. Riesgo de perdida de datos en cache.'
+
+        # ==== DISCOVERY: PSUS ====
+        - uuid: f4f1a2b3c4d5108f4e1e2f3a4b5c6d7e
+          name: 'Discover Enclosure PSUs'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,psus]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de fuentes de poder via lsenclosurepsu.
+            Macros: {#PSUID}, {#ENCLOSUREID}, {#PSUSTATUS}, {#PSUSERIAL}
+          item_prototypes:
+            - uuid: a5f1a2b3c4d5119a5e1e2f3a4b5c6d7e
+              name: 'PSU {#PSUID} (Enclosure {#ENCLOSUREID}): Status'
+              type: DEPENDENT
+              key: 'flashsystem.psu.status[{HOST.IP},{#PSUID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: |
+                Estado de la fuente de poder {#PSUID} en enclosure {#ENCLOSUREID}.
+                Serial: {#PSUSERIAL}.
+                FIX #1: .first() | FIX #8: comillas dobles.
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.psus[?(@.id=="{#PSUID}")].status.first()'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: psu
+              trigger_prototypes:
+                - uuid: b6f1a2b3c4d512ab6f1e2f3a4b5c6d7e
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.psu.status[{HOST.IP},{#PSUID}],,"like","online")=0'
+                  name: '{HOST.NAME}: PSU {#PSUID} (Enclosure {#ENCLOSUREID}) not online'
+                  priority: HIGH
+                  description: 'Fuente de poder no esta en estado online. Serial: {#PSUSERIAL}. Accion inmediata requerida para redundancia de potencia.'
+
       # -----------------------------------------------------------------------
       # MACROS
       # -----------------------------------------------------------------------
@@ -1216,3 +1331,12 @@ zabbix_export:
         - macro: '{$FS_TEMP_CRIT}'
           value: '40'
           description: 'Umbral CRITICO de temperatura ambiente en Celsius.'
+
+        # FIX #7: Thresholds para componentes criticos (batteries, psus)
+        - macro: '{$FS_BATTERY_HEALTH_WARN}'
+          value: '70'
+          description: 'Umbral WARNING de salud de bateria (health_score) en %. Valores < 70% indican degradacion significativa.'
+
+        - macro: '{$FS_BATTERY_HEALTH_CRIT}'
+          value: '50'
+          description: 'Umbral CRITICO de salud de bateria. Reemplazar bateria si es menor a este valor. Riesgo de perdida de datos.'
