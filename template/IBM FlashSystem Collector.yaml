@@ -1,0 +1,813 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+    - uuid: 7c2cb727f85b492d88cd56e17127c64d
+      name: Templates/SAN
+  templates:
+    - uuid: a1b2c3d4e5f6478a9b0c1d2e3f4a5b6c
+      template: 'IBM FlashSystem Collector'
+      name: 'IBM FlashSystem Collector'
+      description: |
+        Template para IBM FlashSystem / Spectrum Virtualize.
+        Requiere flashsystem-collector v2.0.0 instalado en el servidor Zabbix.
+        Credenciales configuradas en /etc/zabbix/flashsystem/env del servidor.
+        Arquitectura: 1 Master Item (External Script) + Dependent Items + LLD.
+        1 sola conexion SSH por ciclo de polling.
+      groups:
+        - name: Templates
+        - name: Templates/SAN
+
+      # -----------------------------------------------------------------------
+      # ITEMS FIJOS
+      # -----------------------------------------------------------------------
+      items:
+
+        # --- ICMP ---
+        - uuid: b1c2d3e4f5a6478b9c0d1e2f3a4b5c6d
+          name: 'ICMP Ping'
+          type: SIMPLE
+          key: icmpping
+          history: 7d
+          tags:
+            - tag: component
+              value: network
+          triggers:
+            - uuid: c2d3e4f5a6b7489c0d1e2f3a4b5c6d7e
+              expression: 'max(/IBM FlashSystem Collector/icmpping,#3)=0'
+              name: '{HOST.NAME}: Host unreachable'
+              priority: HIGH
+              description: 'El host no responde a ICMP por 3 checks consecutivos.'
+
+        # --- MASTER ITEM ---
+        # Este item ejecuta el collector Go y almacena el JSON completo.
+        # Todos los Dependent Items dependen de este item.
+        # Credenciales NO van en la key — estan en /etc/zabbix/flashsystem/env
+        - uuid: d3e4f5a6b7c8490d1e2f3a4b5c6d7e8f
+          name: 'FlashSystem: Master Collector JSON'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          delay: '{$FS_COLLECT_INTERVAL}'
+          history: 1h
+          trends: '0'
+          value_type: TEXT
+          timeout: '{$FS_TIMEOUT}'
+          description: |
+            Master Item. Ejecuta flashsystem_collector.sh en modo collect.
+            Retorna JSON completo con system, nodes, enclosures, drives, pools,
+            volumes, ports, flashcopy, replication, performance y status.
+            Todos los Dependent Items consumen este JSON via JSONPath.
+          tags:
+            - tag: component
+              value: collector
+
+        # --- COLLECTOR STATUS ---
+        - uuid: e4f5a6b7c8d9401e2f3a4b5c6d7e8f9a
+          name: 'FlashSystem: Collector Success'
+          type: DEPENDENT
+          key: 'flashsystem.collector.success[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: '0'
+          value_type: UNSIGNED
+          description: '1 si la recoleccion fue exitosa, 0 si todos los collectors fallaron.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.status.success'
+            - type: BOOL_TO_DECIMAL
+          tags:
+            - tag: component
+              value: collector
+          triggers:
+            - uuid: f5a6b7c8d9e0412f3a4b5c6d7e8f9a0b
+              expression: 'max(/IBM FlashSystem Collector/flashsystem.collector.success[{HOST.IP}],#3)=0'
+              name: '{HOST.NAME}: FlashSystem collector failing'
+              priority: HIGH
+              description: 'El collector Go no puede obtener datos del FlashSystem.'
+
+        - uuid: a6b7c8d9e0f1423a4b5c6d7e8f9a0b1c
+          name: 'FlashSystem: Collector Duration'
+          type: DEPENDENT
+          key: 'flashsystem.collector.duration[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          value_type: UNSIGNED
+          units: ms
+          description: 'Duracion total de la recoleccion en milisegundos.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.status.duration_ms'
+          tags:
+            - tag: component
+              value: collector
+
+        # --- SYSTEM ---
+        - uuid: b7c8d9e0f1a2434b5c6d7e8f9a0b1c2d
+          name: 'FlashSystem: System Status'
+          type: DEPENDENT
+          key: 'flashsystem.system.status[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Estado del cluster. Valores posibles: online, offline, degraded.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.system[0].status'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: c8d9e0f1a2b3445c6d7e8f9a0b1c2d3e
+              expression: 'find(/IBM FlashSystem Collector/flashsystem.system.status[{HOST.IP}],,"like","online")=0'
+              name: '{HOST.NAME}: FlashSystem cluster not online'
+              priority: DISASTER
+              description: 'El sistema no esta en estado online.'
+
+        - uuid: d9e0f1a2b3c4456d7e8f9a0b1c2d3e4f
+          name: 'FlashSystem: System Name'
+          type: DEPENDENT
+          key: 'flashsystem.system.name[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Nombre del cluster FlashSystem.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.system[0].name'
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: e0f1a2b3c4d5467e8f9a0b1c2d3e4f5a
+          name: 'FlashSystem: Firmware Version'
+          type: DEPENDENT
+          key: 'flashsystem.system.firmware[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Version de firmware (code_level) del sistema.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.system[0].code_level'
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: f1a2b3c4d5e6478f9a0b1c2d3e4f5a6b
+          name: 'FlashSystem: Total Raw Capacity'
+          type: DEPENDENT
+          key: 'flashsystem.system.capacity.total[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: TEXT
+          units: ''
+          description: 'Capacidad total de MDisk (total_mdisk_capacity). Valor string con unidad (ej: 44.0TB).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.system[0].total_mdisk_capacity'
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: a2b3c4d5e6f7489a0b1c2d3e4f5a6b7c
+          name: 'FlashSystem: Total Free Space'
+          type: DEPENDENT
+          key: 'flashsystem.system.capacity.free[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: TEXT
+          description: 'Espacio libre total del sistema (total_free_space). Valor string con unidad.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.system[0].total_free_space'
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: b3c4d5e6f7a8490b1c2d3e4f5a6b7c8d
+          name: 'FlashSystem: Statistics Status'
+          type: DEPENDENT
+          key: 'flashsystem.system.statistics[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: 'Estado de estadisticas de rendimiento (on/off). Si es off, performance no tiene datos.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.system[0].statistics_status'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: c4d5e6f7a8b9401c2d3e4f5a6b7c8d9e
+              expression: 'find(/IBM FlashSystem Collector/flashsystem.system.statistics[{HOST.IP}],,"like","on")=0'
+              name: '{HOST.NAME}: FlashSystem statistics collection is disabled'
+              priority: WARNING
+              description: 'Las estadisticas estan deshabilitadas. Performance metrics no estaran disponibles. Ejecutar svctask startstats en el storage.'
+
+        # --- PERFORMANCE ---
+        - uuid: d5e6f7a8b9c0412d3e4f5a6b7c8d9e0f
+          name: 'FlashSystem: Read IOPS'
+          type: DEPENDENT
+          key: 'flashsystem.perf.read_io[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: iops
+          description: 'IOPS de lectura actuales (stat_current de read_io).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''read_io'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: e6f7a8b9c0d1423e4f5a6b7c8d9e0f1a
+          name: 'FlashSystem: Write IOPS'
+          type: DEPENDENT
+          key: 'flashsystem.perf.write_io[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: iops
+          description: 'IOPS de escritura actuales (stat_current de write_io).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''write_io'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: f7a8b9c0d1e2434f5a6b7c8d9e0f1a2b
+          name: 'FlashSystem: Read Throughput'
+          type: DEPENDENT
+          key: 'flashsystem.perf.read_mb[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: MBps
+          description: 'Throughput de lectura en MB/s (stat_current de read_mb).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''read_mb'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: a8b9c0d1e2f3445a6b7c8d9e0f1a2b3c
+          name: 'FlashSystem: Write Throughput'
+          type: DEPENDENT
+          key: 'flashsystem.perf.write_mb[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: MBps
+          description: 'Throughput de escritura en MB/s (stat_current de write_mb).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''write_mb'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: b9c0d1e2f3a4456b7c8d9e0f1a2b3c4d
+          name: 'FlashSystem: Read Latency'
+          type: DEPENDENT
+          key: 'flashsystem.perf.read_ms[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: ms
+          description: 'Latencia de lectura en ms (stat_current de read_ms).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''read_ms'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+          triggers:
+            - uuid: c0d1e2f3a4b5467c8d9e0f1a2b3c4d5e
+              expression: 'min(/IBM FlashSystem Collector/flashsystem.perf.read_ms[{HOST.IP}],5m)>{$FS_LATENCY_READ_WARN}'
+              name: '{HOST.NAME}: High read latency ({ITEM.LASTVALUE})'
+              priority: WARNING
+              description: 'La latencia de lectura supera el umbral configurado.'
+
+        - uuid: d1e2f3a4b5c6478d9e0f1a2b3c4d5e6f
+          name: 'FlashSystem: Write Latency'
+          type: DEPENDENT
+          key: 'flashsystem.perf.write_ms[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: ms
+          description: 'Latencia de escritura en ms (stat_current de write_ms).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''write_ms'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+          triggers:
+            - uuid: e2f3a4b5c6d7489e0f1a2b3c4d5e6f7a
+              expression: 'min(/IBM FlashSystem Collector/flashsystem.perf.write_ms[{HOST.IP}],5m)>{$FS_LATENCY_WRITE_WARN}'
+              name: '{HOST.NAME}: High write latency ({ITEM.LASTVALUE})'
+              priority: WARNING
+              description: 'La latencia de escritura supera el umbral configurado.'
+
+        - uuid: f3a4b5c6d7e8490f1a2b3c4d5e6f7a8b
+          name: 'FlashSystem: CPU Usage'
+          type: DEPENDENT
+          key: 'flashsystem.perf.cpu_pc[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: '%'
+          description: 'Porcentaje de uso de CPU del sistema (stat_current de cpu_pc).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''cpu_pc'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+          triggers:
+            - uuid: a4b5c6d7e8f9401a2b3c4d5e6f7a8b9c
+              expression: 'min(/IBM FlashSystem Collector/flashsystem.perf.cpu_pc[{HOST.IP}],5m)>{$FS_CPU_WARN}'
+              name: '{HOST.NAME}: High CPU usage ({ITEM.LASTVALUE}%)'
+              priority: WARNING
+              description: 'El uso de CPU supera el umbral configurado.'
+
+        - uuid: b5c6d7e8f9a0412b3c4d5e6f7a8b9c0d
+          name: 'FlashSystem: FC Throughput'
+          type: DEPENDENT
+          key: 'flashsystem.perf.fc_mb[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: MBps
+          description: 'Throughput total Fibre Channel en MB/s (stat_current de fc_mb).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''fc_mb'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: c6d7e8f9a0b1423c4d5e6f7a8b9c0d1e
+          name: 'FlashSystem: FC IOPS'
+          type: DEPENDENT
+          key: 'flashsystem.perf.fc_io[{HOST.IP}]'
+          master_item:
+            key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+          history: 7d
+          trends: 90d
+          value_type: UNSIGNED
+          units: iops
+          description: 'IOPS totales Fibre Channel (stat_current de fc_io).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.performance[?(@.stat_name==''fc_io'')].stat_current'
+            - type: TRIM
+              parameters:
+                - ' '
+          tags:
+            - tag: component
+              value: performance
+
+      # -----------------------------------------------------------------------
+      # DISCOVERY RULES
+      # -----------------------------------------------------------------------
+      discovery_rules:
+
+        # --- DISCOVERY: POOLS (equivalente a MDiskGroups del template original) ---
+        - uuid: d7e8f9a0b1c2434d5e6f7a8b9c0d1e2f
+          name: 'Discover Storage Pools'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,pools]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de pools de almacenamiento (lsmdiskgrp).
+            Macros disponibles: {#POOLID}, {#POOLNAME}, {#POOLSTATUS}
+          item_prototypes:
+            - uuid: e8f9a0b1c2d3445e6f7a8b9c0d1e2f3a
+              name: 'Pool {#POOLNAME}: Status'
+              type: DEPENDENT
+              key: 'flashsystem.pool.status[{HOST.IP},{#POOLNAME}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: 'Estado del pool {#POOLNAME} (online/offline/degraded).'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.name==''{#POOLNAME}'')].status'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: pool
+              trigger_prototypes:
+                - uuid: f9a0b1c2d3e4456f7a8b9c0d1e2f3a4b
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.pool.status[{HOST.IP},{#POOLNAME}],,"like","online")=0'
+                  name: '{HOST.NAME}: Pool {#POOLNAME} is not online'
+                  priority: HIGH
+                  description: 'El pool de almacenamiento no esta en estado online.'
+
+            - uuid: a0b1c2d3e4f5467a8b9c0d1e2f3a4b5c
+              name: 'Pool {#POOLNAME}: Total Capacity'
+              type: DEPENDENT
+              key: 'flashsystem.pool.capacity[{HOST.IP},{#POOLNAME}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: 90d
+              value_type: TEXT
+              description: 'Capacidad total del pool {#POOLNAME}. Valor string con unidad (ej: 44.0TB).'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.name==''{#POOLNAME}'')].capacity'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: pool
+
+            - uuid: b1c2d3e4f5a6478b9c0d1e2f3a4b5c6d
+              name: 'Pool {#POOLNAME}: Free Capacity'
+              type: DEPENDENT
+              key: 'flashsystem.pool.free[{HOST.IP},{#POOLNAME}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: 90d
+              value_type: TEXT
+              description: 'Capacidad libre del pool {#POOLNAME}. Valor string con unidad.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.name==''{#POOLNAME}'')].free_capacity'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: pool
+
+            - uuid: c2d3e4f5a6b7489c0d1e2f3a4b5c6d7e
+              name: 'Pool {#POOLNAME}: Used Capacity'
+              type: DEPENDENT
+              key: 'flashsystem.pool.used[{HOST.IP},{#POOLNAME}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: 90d
+              value_type: TEXT
+              description: 'Capacidad usada del pool {#POOLNAME}. Valor string con unidad.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.name==''{#POOLNAME}'')].used_capacity'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: pool
+
+            - uuid: d3e4f5a6b7c8490d1e2f3a4b5c6d7e8f
+              name: 'Pool {#POOLNAME}: Overallocation'
+              type: DEPENDENT
+              key: 'flashsystem.pool.overallocation[{HOST.IP},{#POOLNAME}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: 90d
+              value_type: TEXT
+              description: 'Porcentaje de sobreasignacion del pool {#POOLNAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.name==''{#POOLNAME}'')].overallocation'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: pool
+
+            - uuid: e4f5a6b7c8d9401e2f3a4b5c6d7e8f9a
+              name: 'Pool {#POOLNAME}: VDisk Count'
+              type: DEPENDENT
+              key: 'flashsystem.pool.vdisk_count[{HOST.IP},{#POOLNAME}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: 90d
+              value_type: TEXT
+              description: 'Cantidad de volumenes en el pool {#POOLNAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.name==''{#POOLNAME}'')].vdisk_count'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: pool
+
+        # --- DISCOVERY: DRIVES ---
+        - uuid: f5a6b7c8d9e0412f3a4b5c6d7e8f9a0b
+          name: 'Discover Drives'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,drives]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de drives fisicos (lsdrive).
+            Macros disponibles: {#DRIVEID}, {#ENCLOSUREID}, {#SLOTID}, {#DRIVESTATUS}, {#DRIVETYPE}, {#DRIVECAPACITY}
+          item_prototypes:
+            - uuid: a6b7c8d9e0f1423a4b5c6d7e8f9a0b1c
+              name: 'Drive {#DRIVEID} (Enc {#ENCLOSUREID}/Slot {#SLOTID}): Status'
+              type: DEPENDENT
+              key: 'flashsystem.drive.status[{HOST.IP},{#DRIVEID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: 'Estado del drive {#DRIVEID} en enclosure {#ENCLOSUREID} slot {#SLOTID}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.drives[?(@.id==''{#DRIVEID}'')].status'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: drive
+              trigger_prototypes:
+                - uuid: b7c8d9e0f1a2434b5c6d7e8f9a0b1c2d
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.drive.status[{HOST.IP},{#DRIVEID}],,"like","online")=0'
+                  name: '{HOST.NAME}: Drive {#DRIVEID} (Enc {#ENCLOSUREID}/Slot {#SLOTID}) not online'
+                  priority: HIGH
+                  description: 'El drive fisico no esta en estado online.'
+
+        # --- DISCOVERY: VOLUMES ---
+        - uuid: c8d9e0f1a2b3445c6d7e8f9a0b1c2d3e
+          name: 'Discover Volumes'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,volumes]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de volumenes virtuales (lsvdisk).
+            Macros disponibles: {#VOLUMEID}, {#VOLUMENAME}, {#VOLUMESTATUS}, {#VOLUMEPOOL}
+          item_prototypes:
+            - uuid: d9e0f1a2b3c4456d7e8f9a0b1c2d3e4f
+              name: 'Volume {#VOLUMENAME}: Status'
+              type: DEPENDENT
+              key: 'flashsystem.volume.status[{HOST.IP},{#VOLUMEID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: 'Estado del volumen {#VOLUMENAME} (id: {#VOLUMEID}) en pool {#VOLUMEPOOL}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.volumes[?(@.id==''{#VOLUMEID}'')].status'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: volume
+              trigger_prototypes:
+                - uuid: e0f1a2b3c4d5467e8f9a0b1c2d3e4f5a
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.volume.status[{HOST.IP},{#VOLUMEID}],,"like","online")=0'
+                  name: '{HOST.NAME}: Volume {#VOLUMENAME} not online'
+                  priority: HIGH
+                  description: 'El volumen virtual no esta en estado online.'
+
+        # --- DISCOVERY: ENCLOSURES ---
+        - uuid: f1a2b3c4d5e6478f9a0b1c2d3e4f5a6b
+          name: 'Discover Enclosures'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,enclosures]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de enclosures fisicos (lsenclosure).
+            Macros disponibles: {#ENCLOSUREID}, {#ENCLOSURESTATUS}, {#ENCLOSUREMODEL}
+          item_prototypes:
+            - uuid: a2b3c4d5e6f7489a0b1c2d3e4f5a6b7c
+              name: 'Enclosure {#ENCLOSUREID} ({#ENCLOSUREMODEL}): Status'
+              type: DEPENDENT
+              key: 'flashsystem.enclosure.status[{HOST.IP},{#ENCLOSUREID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: 'Estado del enclosure {#ENCLOSUREID} modelo {#ENCLOSUREMODEL}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.enclosures[?(@.id==''{#ENCLOSUREID}'')].status'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: enclosure
+              trigger_prototypes:
+                - uuid: b3c4d5e6f7a8490b1c2d3e4f5a6b7c8d
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.enclosure.status[{HOST.IP},{#ENCLOSUREID}],,"like","online")=0'
+                  name: '{HOST.NAME}: Enclosure {#ENCLOSUREID} not online'
+                  priority: HIGH
+                  description: 'El enclosure fisico no esta en estado online.'
+
+        # --- DISCOVERY: NODES ---
+        - uuid: c4d5e6f7a8b9401c2d3e4f5a6b7c8d9e
+          name: 'Discover Nodes'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,nodes]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de nodos canisters (lsnode).
+            Macros disponibles: {#NODEID}, {#NODENAME}, {#NODESTATUS}, {#NODEIOGROUP}
+          item_prototypes:
+            - uuid: d5e6f7a8b9c0412d3e4f5a6b7c8d9e0f
+              name: 'Node {#NODENAME} (IO Group {#NODEIOGROUP}): Status'
+              type: DEPENDENT
+              key: 'flashsystem.node.status[{HOST.IP},{#NODEID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: 'Estado del nodo canister {#NODENAME} en IO group {#NODEIOGROUP}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.nodes[?(@.id==''{#NODEID}'')].status'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: node
+              trigger_prototypes:
+                - uuid: e6f7a8b9c0d1423e4f5a6b7c8d9e0f1a
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.node.status[{HOST.IP},{#NODEID}],,"like","online")=0'
+                  name: '{HOST.NAME}: Node {#NODENAME} not online'
+                  priority: HIGH
+                  description: 'El nodo canister no esta en estado online.'
+
+        # --- DISCOVERY: FC PORTS ---
+        - uuid: f7a8b9c0d1e2434f5a6b7c8d9e0f1a2b
+          name: 'Discover FC Ports'
+          type: EXTERNAL
+          key: 'flashsystem_collector.sh[{HOST.IP},discover,ports]'
+          delay: '{$FS_DISCOVERY_INTERVAL}'
+          lifetime: 3d
+          description: |
+            LLD de puertos Fibre Channel (lsportfc).
+            Macros disponibles: {#PORTID}, {#WWPN}, {#PORTSTATUS}, {#PORTNODENAME}, {#PORTSPEED}
+          item_prototypes:
+            - uuid: a8b9c0d1e2f3445a6b7c8d9e0f1a2b3c
+              name: 'FC Port {#PORTID} ({#WWPN}) on {#PORTNODENAME}: Status'
+              type: DEPENDENT
+              key: 'flashsystem.port.status[{HOST.IP},{#PORTID}]'
+              master_item:
+                key: 'flashsystem_collector.sh[{HOST.IP},collect]'
+              history: 7d
+              trends: '0'
+              value_type: TEXT
+              description: 'Estado del puerto FC {#PORTID} WWPN {#WWPN} en nodo {#PORTNODENAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.ports[?(@.id==''{#PORTID}'')].status'
+                - type: TRIM
+                  parameters:
+                    - ' '
+              tags:
+                - tag: component
+                  value: port
+              trigger_prototypes:
+                - uuid: b9c0d1e2f3a4456b7c8d9e0f1a2b3c4d
+                  expression: 'find(/IBM FlashSystem Collector/flashsystem.port.status[{HOST.IP},{#PORTID}],,"like","active")=0'
+                  name: '{HOST.NAME}: FC Port {#PORTID} ({#WWPN}) on {#PORTNODENAME} not active'
+                  priority: AVERAGE
+                  description: 'El puerto FC no esta en estado active. Puede indicar cable desconectado o fallo de switch.'
+
+      # -----------------------------------------------------------------------
+      # MACROS
+      # -----------------------------------------------------------------------
+      macros:
+        - macro: '{$FS_COLLECT_INTERVAL}'
+          value: '60'
+          description: 'Intervalo de recoleccion del Master Item en segundos.'
+        - macro: '{$FS_TIMEOUT}'
+          value: '55'
+          description: 'Timeout del External Script en segundos. Debe ser menor que FS_COLLECT_INTERVAL.'
+        - macro: '{$FS_DISCOVERY_INTERVAL}'
+          value: 4h
+          description: 'Intervalo de discovery LLD. Coincide con DiscoveryTTL del collector.'
+        - macro: '{$FS_POOL_WARN_PCT}'
+          value: '80'
+          description: 'Umbral WARNING de uso de pool en porcentaje. NO usado actualmente (capacidades son string).'
+        - macro: '{$FS_POOL_CRIT_PCT}'
+          value: '90'
+          description: 'Umbral CRITICO de uso de pool en porcentaje. NO usado actualmente (capacidades son string).'
+        - macro: '{$FS_LATENCY_READ_WARN}'
+          value: '10'
+          description: 'Umbral WARNING de latencia de lectura en ms.'
+        - macro: '{$FS_LATENCY_WRITE_WARN}'
+          value: '10'
+          description: 'Umbral WARNING de latencia de escritura en ms.'
+        - macro: '{$FS_CPU_WARN}'
+          value: '80'
+          description: 'Umbral WARNING de uso de CPU en porcentaje.'
