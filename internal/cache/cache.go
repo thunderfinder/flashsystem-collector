@@ -279,6 +279,21 @@ func MakeDiscoveryKey(host, collector string) string {
 	return fmt.Sprintf("%s:discovery:%s", host, collector)
 }
 
+// GetStale busca una entrada en el cache por clave sin verificar expiración.
+// Retorna (entry, true) si existe, aunque esté expirada.
+// Retorna (Entry{}, false) solo si la clave no existe en absoluto.
+// Usar exclusivamente como fallback cuando SSH falla.
+func (c *Cache) GetStale(key string) (Entry, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	entry, ok := c.data.Entries[key]
+	if !ok {
+		return Entry{}, false
+	}
+	return entry, true
+}
+
 // Unmarshal deserializa el valor de una Entry al tipo destino.
 // Uso típico:
 //
