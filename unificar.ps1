@@ -1,38 +1,39 @@
 #SCRIPT DE POWERSHELL PARA UNIFICAR ARCHIVOS EN UN SOLO TXT
 # Nombre del archivo de salida
-$archivoSalida = "resultado_unificado$date.txt"
+$archivoSalida = "resultado_unificado.txt"
 
-# Ruta base
-$basePath = Get-Location
+# Ruta base como string
+$basePath = (Get-Location).Path
 
-# Crear/limpiar archivo de salida
+# Crear/limpiar archivo
 New-Item -ItemType File -Path $archivoSalida -Force | Out-Null
 
-# Obtener todas las carpetas (incluyendo la raíz)
-$carpetas = Get-ChildItem -Recurse -Directory
-$carpetas = ,$basePath + $carpetas  # incluir carpeta raíz
+# Obtener carpetas (incluyendo raíz correctamente)
+$carpetas = @($basePath) + (Get-ChildItem -Recurse -Directory | Select-Object -ExpandProperty FullName)
 
 foreach ($carpeta in $carpetas) {
 
-    # Ruta relativa
-    $rutaRelativa = Resolve-Path -Path $carpeta.FullName -Relative
+    if (-not $carpeta) { continue }  # protección extra
 
-    # Encabezado de carpeta
+    # Ruta relativa manual (más estable que Resolve-Path)
+    $rutaRelativa = $carpeta.Replace($basePath, ".")
+    if ($rutaRelativa -eq "") { $rutaRelativa = "." }
+
+    # Header carpeta
     $headerCarpeta = "`n" + ("#" * 60) + "`n"
     $headerCarpeta += " CARPETA: $rutaRelativa `n"
     $headerCarpeta += ("#" * 60) + "`n"
 
     Add-Content -Path $archivoSalida -Value $headerCarpeta
 
-    # Obtener archivos de la carpeta actual
-    $archivos = Get-ChildItem -Path $carpeta.FullName -File |
+    # Archivos dentro de la carpeta
+    $archivos = Get-ChildItem -Path $carpeta -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -ne $archivoSalida }
 
     foreach ($archivo in $archivos) {
 
-        $rutaArchivoRelativa = Resolve-Path -Path $archivo.FullName -Relative
+        $rutaArchivoRelativa = $archivo.FullName.Replace($basePath, ".")
 
-        # Encabezado de archivo
         $encabezado = "`n" + ("=" * 50) + "`n"
         $encabezado += " ARCHIVO: $rutaArchivoRelativa `n"
         $encabezado += ("=" * 50) + "`n"
