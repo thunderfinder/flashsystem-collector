@@ -99,6 +99,7 @@ func Load() (*Config, error) {
 	cmdTimeout := flag.Duration("cmd-timeout", 0, "SSH command timeout, default 30s (env: FS_CMD_TIMEOUT)")
 	metricsTTL := flag.Duration("metrics-ttl", 0, "Cache TTL for metrics, default 5m (env: FS_METRICS_TTL)")
 	discoveryTTL := flag.Duration("discovery-ttl", 0, "Cache TTL for discovery, default 4h (env: FS_DISCOVERY_TTL)")
+	perfTTL := flag.Duration("perf-ttl", 0, "Cache TTL for performance stats, default 60s (env: FS_PERF_TTL)")
 	maxJSON := flag.Int("max-json-bytes", 0, "Max JSON output size in bytes, default 1MB (env: FS_MAX_JSON_BYTES)")
 	maxVols := flag.Int("max-volumes", 0, "Max volumes in output, default 500 (env: FS_MAX_VOLUMES)")
 	maxDrives := flag.Int("max-drives", 0, "Max drives in output, default 500 (env: FS_MAX_DRIVES)")
@@ -144,6 +145,9 @@ func Load() (*Config, error) {
 	}
 	if *discoveryTTL != 0 {
 		cfg.Cache.DiscoveryTTL = *discoveryTTL
+	}
+	if *perfTTL != 0 {
+		cfg.Cache.PerformanceTTL = *perfTTL
 	}
 	if *maxJSON != 0 {
 		cfg.Limits.MaxJSONBytes = *maxJSON
@@ -305,6 +309,10 @@ func (cfg *Config) validate() error {
 
 	if cfg.Cache.DiscoveryTTL < time.Minute {
 		return fmt.Errorf("discovery-ttl must be >= 1m, got %s", cfg.Cache.DiscoveryTTL)
+	}
+
+	if cfg.Cache.PerformanceTTL < time.Second {
+		return fmt.Errorf("perf-ttl must be >= 1s, got %s", cfg.Cache.PerformanceTTL)
 	}
 
 	if cfg.Limits.MaxJSONBytes < 1024 {
