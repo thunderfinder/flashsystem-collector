@@ -1,11 +1,11 @@
 
 ############################################################
- CARPETA:  
+ CARPETA: . 
 ############################################################
 
 
 ==================================================
- ARCHIVO: .gitattributes 
+ ARCHIVO: .\.gitattributes 
 ==================================================
 
 # Auto detect text files and perform LF normalization
@@ -1763,39 +1763,40 @@ flashsystem-collector/
 
 #SCRIPT DE POWERSHELL PARA UNIFICAR ARCHIVOS EN UN SOLO TXT
 # Nombre del archivo de salida
-$archivoSalida = "resultado_unificado$date.txt"
+$archivoSalida = "resultado_unificado.txt"
 
-# Ruta base
-$basePath = Get-Location
+# Ruta base como string
+$basePath = (Get-Location).Path
 
-# Crear/limpiar archivo de salida
+# Crear/limpiar archivo
 New-Item -ItemType File -Path $archivoSalida -Force | Out-Null
 
-# Obtener todas las carpetas (incluyendo la raíz)
-$carpetas = Get-ChildItem -Recurse -Directory
-$carpetas = ,$basePath + $carpetas  # incluir carpeta raíz
+# Obtener carpetas (incluyendo raíz correctamente)
+$carpetas = @($basePath) + (Get-ChildItem -Recurse -Directory | Select-Object -ExpandProperty FullName)
 
 foreach ($carpeta in $carpetas) {
 
-    # Ruta relativa
-    $rutaRelativa = Resolve-Path -Path $carpeta.FullName -Relative
+    if (-not $carpeta) { continue }  # protección extra
 
-    # Encabezado de carpeta
+    # Ruta relativa manual (más estable que Resolve-Path)
+    $rutaRelativa = $carpeta.Replace($basePath, ".")
+    if ($rutaRelativa -eq "") { $rutaRelativa = "." }
+
+    # Header carpeta
     $headerCarpeta = "`n" + ("#" * 60) + "`n"
     $headerCarpeta += " CARPETA: $rutaRelativa `n"
     $headerCarpeta += ("#" * 60) + "`n"
 
     Add-Content -Path $archivoSalida -Value $headerCarpeta
 
-    # Obtener archivos de la carpeta actual
-    $archivos = Get-ChildItem -Path $carpeta.FullName -File |
+    # Archivos dentro de la carpeta
+    $archivos = Get-ChildItem -Path $carpeta -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -ne $archivoSalida }
 
     foreach ($archivo in $archivos) {
 
-        $rutaArchivoRelativa = Resolve-Path -Path $archivo.FullName -Relative
+        $rutaArchivoRelativa = $archivo.FullName.Replace($basePath, ".")
 
-        # Encabezado de archivo
         $encabezado = "`n" + ("=" * 50) + "`n"
         $encabezado += " ARCHIVO: $rutaArchivoRelativa `n"
         $encabezado += ("=" * 50) + "`n"
@@ -1846,7 +1847,7 @@ FS_INSECURE=true
 FS_CACHE_DIR=/var/tmp
 FS_METRICS_TTL=5m
 FS_DISCOVERY_TTL=4h
-
+FS_PERF_TTL=60s     # TTL para metricas de performance (lssystemstats)
 # --- Logging ---
 FS_VERBOSE=false
 
@@ -3494,6 +3495,41 @@ func (e *Entry) Unmarshal(dest interface{}) error {
 
 
 ==================================================
+ ARCHIVO: .\internal\collectors\batteries.go 
+==================================================
+
+package collectors
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/flashsystem-collector/internal/parser"
+	internalssh "github.com/flashsystem-collector/internal/ssh"
+)
+
+type BatteriesCollector struct {
+	ttl time.Duration
+}
+
+func NewBatteriesCollector(ttl time.Duration) *BatteriesCollector {
+	return &BatteriesCollector{ttl: ttl}
+}
+
+func (c *BatteriesCollector) Name() string       { return "batteries" }
+func (c *BatteriesCollector) TTL() time.Duration { return c.ttl }
+
+func (c *BatteriesCollector) Collect(client *internalssh.Client) ([]parser.Record, error) {
+	output, err := client.Run("svcinfo lsenclosurebattery -delim :")
+	if err != nil {
+		return nil, fmt.Errorf("batteries collector: %w", err)
+	}
+	result := parser.Parse(output)
+	return result.Records, nil
+}
+
+
+==================================================
  ARCHIVO: .\internal\collectors\collector.go 
 ==================================================
 
@@ -4141,6 +4177,41 @@ func (c *PortsCollector) Collect(client *internalssh.Client) ([]parser.Record, e
 
 
 ==================================================
+ ARCHIVO: .\internal\collectors\psus.go 
+==================================================
+
+package collectors
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/flashsystem-collector/internal/parser"
+	internalssh "github.com/flashsystem-collector/internal/ssh"
+)
+
+type PSUsCollector struct {
+	ttl time.Duration
+}
+
+func NewPSUsCollector(ttl time.Duration) *PSUsCollector {
+	return &PSUsCollector{ttl: ttl}
+}
+
+func (c *PSUsCollector) Name() string       { return "psus" }
+func (c *PSUsCollector) TTL() time.Duration { return c.ttl }
+
+func (c *PSUsCollector) Collect(client *internalssh.Client) ([]parser.Record, error) {
+	output, err := client.Run("svcinfo lsenclosurepsu -delim :")
+	if err != nil {
+		return nil, fmt.Errorf("psus collector: %w", err)
+	}
+	result := parser.Parse(output)
+	return result.Records, nil
+}
+
+
+==================================================
  ARCHIVO: .\internal\collectors\replication.go 
 ==================================================
 
@@ -4516,6 +4587,7 @@ func Load() (*Config, error) {
 	cmdTimeout := flag.Duration("cmd-timeout", 0, "SSH command timeout, default 30s (env: FS_CMD_TIMEOUT)")
 	metricsTTL := flag.Duration("metrics-ttl", 0, "Cache TTL for metrics, default 5m (env: FS_METRICS_TTL)")
 	discoveryTTL := flag.Duration("discovery-ttl", 0, "Cache TTL for discovery, default 4h (env: FS_DISCOVERY_TTL)")
+	perfTTL := flag.Duration("perf-ttl", 0, "Cache TTL for performance stats, default 60s (env: FS_PERF_TTL)")
 	maxJSON := flag.Int("max-json-bytes", 0, "Max JSON output size in bytes, default 1MB (env: FS_MAX_JSON_BYTES)")
 	maxVols := flag.Int("max-volumes", 0, "Max volumes in output, default 500 (env: FS_MAX_VOLUMES)")
 	maxDrives := flag.Int("max-drives", 0, "Max drives in output, default 500 (env: FS_MAX_DRIVES)")
@@ -4561,6 +4633,9 @@ func Load() (*Config, error) {
 	}
 	if *discoveryTTL != 0 {
 		cfg.Cache.DiscoveryTTL = *discoveryTTL
+	}
+	if *perfTTL != 0 {
+		cfg.Cache.PerformanceTTL = *perfTTL
 	}
 	if *maxJSON != 0 {
 		cfg.Limits.MaxJSONBytes = *maxJSON
@@ -4722,6 +4797,10 @@ func (cfg *Config) validate() error {
 
 	if cfg.Cache.DiscoveryTTL < time.Minute {
 		return fmt.Errorf("discovery-ttl must be >= 1m, got %s", cfg.Cache.DiscoveryTTL)
+	}
+
+	if cfg.Cache.PerformanceTTL < time.Second {
+		return fmt.Errorf("perf-ttl must be >= 1s, got %s", cfg.Cache.PerformanceTTL)
 	}
 
 	if cfg.Limits.MaxJSONBytes < 1024 {
