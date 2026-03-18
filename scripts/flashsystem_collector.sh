@@ -155,6 +155,10 @@ build_auth_args() {
         auth_args+=("-discovery-ttl" "${FS_DISCOVERY_TTL}")
     fi
 
+    if [[ -n "${FS_PERF_TTL:-}" ]]; then
+        auth_args+=("-perf-ttl" "${FS_PERF_TTL}")
+    fi
+
     if [[ "${FS_VERBOSE:-false}" == "true" ]]; then
         auth_args+=("-verbose")
     fi
