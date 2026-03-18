@@ -218,6 +218,9 @@ func applyEnv(cfg *Config) {
 	if d := parseDurationEnv("FS_DISCOVERY_TTL"); d != 0 {
 		cfg.Cache.DiscoveryTTL = d
 	}
+	if d := parseDurationEnv("FS_PERF_TTL"); d != 0 {
+		cfg.Cache.PerformanceTTL = d
+	}
 	if v := os.Getenv("FS_MAX_JSON_BYTES"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.Limits.MaxJSONBytes = n

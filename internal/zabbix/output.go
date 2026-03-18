@@ -13,21 +13,24 @@ import (
 // Output es la estructura raíz del JSON que Zabbix consume.
 // Diseñada para usarse como Master Item con Dependent Items y LLD rules.
 type Output struct {
-	Timestamp   string           `json:"timestamp"`
-	Host        string           `json:"host"`
-	Version     string           `json:"version"`
-	System      json.RawMessage  `json:"system"`
-	Nodes       json.RawMessage  `json:"nodes"`
-	Enclosures  json.RawMessage  `json:"enclosures"`
-	Drives      json.RawMessage  `json:"drives"`
-	Pools       json.RawMessage  `json:"pools"`
-	Volumes     json.RawMessage  `json:"volumes"`
-	Ports       json.RawMessage  `json:"ports"`
-	FlashCopy   json.RawMessage  `json:"flashcopy"`
-	Replication json.RawMessage  `json:"replication"`
-	Performance json.RawMessage  `json:"performance"`
-	Status      CollectionStatus `json:"status"`
-	CacheStats  cache.Stats      `json:"cache_stats"`
+	Timestamp   string            `json:"timestamp"`
+	Host        string            `json:"host"`
+	Version     string            `json:"version"`
+	System      json.RawMessage   `json:"system"`
+	Nodes       json.RawMessage   `json:"nodes"`
+	Enclosures  json.RawMessage   `json:"enclosures"`
+	Drives      json.RawMessage   `json:"drives"`
+	Pools       json.RawMessage   `json:"pools"`
+	Volumes     json.RawMessage   `json:"volumes"`
+	Ports       json.RawMessage   `json:"ports"`
+	FlashCopy   json.RawMessage   `json:"flashcopy"`
+	Replication json.RawMessage   `json:"replication"`
+	Performance json.RawMessage   `json:"performance"`
+	Status      CollectionStatus  `json:"status"`
+	CacheStats  cache.Stats       `json:"cache_stats"`
+	Batteries   json.RawMessage   `json:"batteries"`
+	PSUs        json.RawMessage   `json:"psus"`
+	UnitsInfo   map[string]string `json:"units_info,omitempty"`
 }
 
 // CollectionStatus contiene el resumen de la ejecución del collector.
@@ -92,6 +95,21 @@ func Build(
 	out.Performance = marshalSection(results, "performance", &sectionErrors)
 	out.Ports = marshalSection(results, "ports", &sectionErrors)
 
+	out.Batteries = marshalSection(results, "batteries", &sectionErrors)
+	out.PSUs = marshalSection(results, "psus", &sectionErrors)
+
+	out.UnitsInfo = map[string]string{
+		"vdisk_ms":       "microseconds",
+		"mdisk_ms":       "microseconds",
+		"drive_ms":       "microseconds",
+		"read_ms":        "milliseconds",
+		"write_ms":       "milliseconds",
+		"cpu_pc":         "percent",
+		"write_cache_pc": "percent",
+		"temp_c":         "celsius",
+		"power_w":        "watts",
+	}
+
 	// Volumes y Drives tienen límite de registros configurable.
 	out.Volumes = marshalSectionLimited(
 		results, "volumes", cfg.MaxVolumes,
@@ -107,7 +125,7 @@ func Build(
 	collectorOrder := []string{
 		"system", "nodes", "enclosures", "drives",
 		"pools", "volumes", "ports", "flashcopy",
-		"replication", "performance",
+		"replication", "performance", "batteries", "psus",
 	}
 
 	for _, name := range collectorOrder {
@@ -155,6 +173,7 @@ func Build(
 
 	// --- Validar tamaño del JSON ---
 	data, err := json.Marshal(out)
+
 	if err != nil {
 		return nil, fmt.Errorf("zabbix output: cannot serialize final JSON: %w", err)
 	}
@@ -416,4 +435,24 @@ var PortLLDFields = map[string]string{
 	"status":     "{#PORTSTATUS}",
 	"node_name":  "{#PORTNODENAME}",
 	"port_speed": "{#PORTSPEED}",
+}
+
+// BatteryLLDFields mapea campos de lsenclosurebattery a macros Zabbix LLD.
+var BatteryLLDFields = map[string]string{
+	"enclosure_id":        "{#ENCLOSUREID}",
+	"battery_id":          "{#BATTERYID}",
+	"status":              "{#BATTERYSTATUS}",
+	"percent_charged":     "{#BATTERYCHARGE}",
+	"end_of_life_warning": "{#BATTERYEOL}",
+	"recondition_needed":  "{#BATTERYRECO}",
+}
+
+// PSULLDFields mapea campos de lsenclosurepsu a macros Zabbix LLD.
+var PSULLDFields = map[string]string{
+	"enclosure_id":  "{#ENCLOSUREID}",
+	"psu_id":        "{#PSUID}",
+	"status":        "{#PSUSTATUS}",
+	"input_failed":  "{#PSUINPUT}",
+	"output_failed": "{#PSUOUTPUT}",
+	"fan_failed":    "{#PSUFAN}",
 }

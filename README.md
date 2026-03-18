@@ -161,6 +161,14 @@ Update interval: 4h
 # Ports
 Key: flashsystem_collector.sh[{HOST.IP},discover,ports]
 Update interval: 4h
+
+# Batteries
+Key: flashsystem_collector.sh[{HOST.IP},discover,batteries]
+Update interval: 4h
+
+# PSUs
+Key: flashsystem_collector.sh[{HOST.IP},discover,psus]
+Update interval: 4h
 ```
 
 ### Dependent Items (ejemplos)
@@ -221,7 +229,9 @@ flashsystem-collector/
 │   │   ├── ports.go
 │   │   ├── flashcopy.go
 │   │   ├── replication.go
-│   │   └── performance.go
+│   │   ├── performance.go
+│   │   ├── batteries.go
+│   │   └── psus.go
 │   └── zabbix/output.go
 ├── scripts/
 │   └── flashsystem_collector.sh

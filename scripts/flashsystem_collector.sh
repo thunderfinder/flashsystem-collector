@@ -228,7 +228,7 @@ run_discover() {
 
     # Validar categoría antes de llamar al binario.
     case "${category}" in
-        drives|pools|volumes|enclosures|nodes|ports)
+        drives|pools|volumes|enclosures|nodes|ports|batteries|psus)
             ;;
         *)
             log_error "Invalid discovery category: ${category}"

@@ -9,7 +9,7 @@
 
 El sistema opera en dos modos excluyentes:
 
-- **`collect`**: ejecuta todos los collectors (system, nodes, enclosures, drives, pools, volumes, ports, flashcopy, replication, performance) en paralelo y emite un JSON único con todos los datos. Este JSON está diseñado para usarse como **Master Item** en Zabbix, del cual se derivan Dependent Items.
+- **`collect`**: ejecuta todos los collectors (system, nodes, enclosures, drives, pools, volumes, ports, flashcopy, replication, performance, batteries, psus) en paralelo y emite un JSON único con todos los datos. Este JSON está diseñado para usarse como **Master Item** en Zabbix, del cual se derivan Dependent Items.
 - **`discover`**: ejecuta un único collector para una categoría específica y emite JSON en formato **LLD (Low Level Discovery)** de Zabbix con macros `{#MACRO}`.
 
 El sistema implementa un **cache persistente en JSON** en disco para evitar conexiones SSH innecesarias. Si SSH falla, intenta servir datos del cache aunque estén expirados (stale cache) antes de retornar error.
@@ -194,7 +194,7 @@ Un flag explícito siempre sobreescribe la variable de entorno correspondiente.
 | `-max-volumes` | `FS_MAX_VOLUMES` | int | `500` | Máximo de volúmenes en el output |
 | `-max-drives` | `FS_MAX_DRIVES` | int | `500` | Máximo de drives en el output |
 | `-verbose` | `FS_VERBOSE` | bool | `false` | Logging de debug a stderr |
-| `-category` | — | string | — | Solo para subcomando `discover`: `drives\|pools\|volumes\|enclosures\|nodes\|ports` |
+| `-category` | — | string | — | Solo para subcomando `discover`: `drives|pools|volumes|enclosures|nodes|ports|batteries|psus` |
 
 ### Reglas de validación (aplicadas en `config.validate()`)
 
@@ -483,7 +483,7 @@ Cada host monitoreado tiene su propio archivo de cache.
 |------|------------|-----------------|
 | Métricas operativas (pools, volumes, nodes, system, flashcopy, replication) | 5 minutos | `-metrics-ttl` / `FS_METRICS_TTL` |
 | Performance (lssystemstats) | 1 minuto | no hay flag separado — usa `PerformanceTTL` hardcoded en `AllCollectors()` pasando `cfg.Cache.PerformanceTTL` |
-| Discovery (drives, enclosures, ports) | 4 horas | `-discovery-ttl` / `FS_DISCOVERY_TTL` |
+| Discovery (drives, enclosures, ports, pools, volumes, nodes, batteries, psus) | 4 horas | `-discovery-ttl` / `FS_DISCOVERY_TTL` |
 
 > **Nota**: `PerformanceTTL` tiene su propio campo en `CacheConfig` (default 60s) pero no tiene flag CLI ni variable de entorno expuesta en el código analizado. Su valor es siempre el default de 60s salvo que se modifique el código fuente.
 
@@ -632,7 +632,7 @@ El cache se reconstruye en la próxima ejecución.
 
 **Causas posibles en orden de probabilidad**:
 1. SSH falla — ver sección anterior
-2. Categoría inválida — debe ser exactamente: `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`
+2. Categoría inválida — debe ser exactamente: `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`
 3. El storage no tiene ítems de esa categoría (ej: no hay FlashCopy configurado)
 4. Cache de discovery está presente y tiene lista vacía — borrar el cache
 

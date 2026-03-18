@@ -149,7 +149,7 @@ func (c *Client) Close() error {
 // Ping verifica que la conexión SSH sigue activa ejecutando un comando trivial.
 // Útil para validar la conexión antes de comenzar la recolección.
 func (c *Client) Ping() error {
-	_, err := c.Run("svcinfo lssystem -nohdr 2>/dev/null | head -1")
+	_, err := c.Run("svcinfo lssystem -nohdr")
 	if err != nil {
 		return fmt.Errorf("SSH ping failed: %w", err)
 	}
