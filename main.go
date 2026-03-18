@@ -266,7 +266,7 @@ func buildFromStaleCache(
 	collectorNames := []string{
 		"system", "nodes", "enclosures", "drives",
 		"pools", "volumes", "ports", "flashcopy",
-		"replication", "performance",
+		"replication", "performance", "batteries", "psus",
 	}
 
 	results := make(map[string]collectors.Result, len(collectorNames))
@@ -457,6 +457,7 @@ Collect flags:
   -cache-dir string     Cache directory, default /var/tmp (env: FS_CACHE_DIR)
   -metrics-ttl duration Cache TTL for metrics, default 5m (env: FS_METRICS_TTL)
   -discovery-ttl dur    Cache TTL for discovery, default 4h (env: FS_DISCOVERY_TTL)
+  -perf-ttl duration    Cache TTL for performance stats, default 60s (env: FS_PERF_TTL)
   -max-json-bytes int   Max JSON output size, default 1048576 (env: FS_MAX_JSON_BYTES)
   -verbose              Enable verbose logging to stderr (env: FS_VERBOSE)
 
