@@ -1,0 +1,3087 @@
+﻿Front cover
+
+IBM Storage FlashSystem 
+7300 Product Guide
+(for IBM Storage Virtualize 8.6)
+
+Vasfi Gucer
+
+Jon Herd
+
+Hartmut Lonzer
+
+Redpaper
+
+
+
+
+
+
+IBM Storage FlashSystem 7300 Family Product Guide
+This IBM Redpaper Product Guide describes the IBM Storage FlashSystem 7300 
+(IBM FlashSystem 7300) solution, which is a next-generation IBM FlashSystem control 
+enclosure. It combines the performance of flash and a Non-Volatile Memory Express 
+(NVMe)-optimized architecture with the reliability and innovation of IBM FlashCore 
+technology and the rich feature set and high availability (HA) of IBM Storage Virtualize.
+
+To take advantage of artificial intelligence (AI)-enhanced applications, real-time big data 
+analytics, and cloud architectures that require higher levels of system performance and 
+storage capacity, enterprises around the globe are rapidly moving to modernize established 
+IT infrastructures. 
+
+However, for many organizations, staff resources, and expertise are limited, and 
+cost-efficiency is a top priority. These organizations have important investments in existing 
+infrastructure that they want to maximize. They need enterprise-grade solutions that optimize 
+cost-efficiency and simplify the pathway to modernization. 
+
+IBM FlashSystem 7300 is designed specifically for these requirements and use cases. It also 
+delivers a cyber resilience without compromising application performance.
+
+IBM FlashSystem 7300 provides a rich set of software-defined storage (SDS) features that 
+are delivered by IBM Storage Virtualize, including the following examples:
+ Data reduction and deduplication
+ Dynamic tiering
+ Thin-provisioning
+ Snapshots
+ Cloning
+ Replication and data copy services
+ Cyber resilience
+ Transparent Cloud Tiering (TCT)
+ IBM HyperSwap® including 3-site replication for high availability
+ Scale-out and scale-up configurations that further enhance capacity and throughput for 
+
+better availability
+ Inline Data Corruption Detection
+© Copyright IBM Corp. 2023, 2024. All rights reserved. ibm.com/redbooks 1
+
+
+
+Overview
+With the release of IBM® Storage Virtualize version 8.6, more functions and features are 
+available. The new features include support for new generation IBM FlashCore Modules 
+(FCMs) NVMe-type drives within the control enclosure, and 100 Gbps Ethernet adapters that 
+provide NVMe Remote Direct Memory Access (RDMA) options. New software features also 
+include GUI enhancements, Fibre Channel (FC) portsets, and security enhancements that 
+includes multifactor authentication and single sign-on.
+
+Flash for less than the cost of disk
+
+Integral to the IBM FlashSystem 7300 solution is the IBM FlashCore technology. The recent 
+evolution of this technology saw enhanced compression technology that enables up to 
+116 TB to be stored in a single drive.
+
+The IBM FlashSystem 7300 system with IBM FCMs includes built-in hardware data 
+compression, and this data reduction is always on. This compression is implemented in 
+hardware by using field-programmable gate arrays (FPGAs) within each module and uses a 
+modified dynamic GZIP algorithm. With this approach, the solution can deliver the level of 
+performance that you expect without compression, with the added benefit of better use of the 
+physical storage.
+
+IBM FCMs implement hardware-based compression without any performance penalty, and 
+performance scales linearly with the number of instances.
+
+In addition, the IBM FlashSystem 7300 control enclosure supports data reduction pool (DRP) 
+compression and deduplication that can increase the effective capacity of your flash memory 
+up to 5x, which decreases the cost of storing data up to 80%. DRPs support active data, 
+unlike other data reduction solutions. 
+
+The IBM FlashSystem 7300 control enclosure offers several features for DRP compression 
+workloads. These features include two 10 Intel core processors with up to 768 TB of memory 
+per node and a built-in compression accelerator for hardware-assisted compression. In 
+addition, the IBM FlashSystem 7300 system with IBM FCMs NVMe-type drives applies 
+compression to any data that is not already compressed.
+
+Agile integration
+
+The IBM FlashSystem 7300 system includes the following agile characteristics:
+ Fully integrated system management.
+ Application-aware data services.
+ Advanced Encryption Standard (AES), data-at-rest encryption with all NVMe type drives, 
+
+and IBM FCMs with FIPS 140-3.
+ In-line hardware compression with IBM Tivoli Storage FlashCopy Manager.
+ Tiering or mirroring to existing and Public Cloud storage.
+ Mixed workload consolidation.
+ Nondisruptive data migrations.
+ Concurrent code load.
+2 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+By accelerating physical and virtual applications, the IBM FlashSystem 7300 system can help 
+organizations reduce costs, increase revenue, and improve customer satisfaction for all types 
+of applications that include the following categories:
+ Transactional
+ Enterprise resource planning (ERP) and supply chain management
+ Big data and analytics
+ Server and desktop virtualization
+ Cloud native
+ Hybrid and multicloud
+
+AI-empowered
+
+The IBM FlashSystem 7300 system includes the following AI characteristics:
+ AI-based data placement for optimal data center performance and zero-downtime data 
+
+migration
+ IBM Storage Insights, which includes AI-empowered predictive analytics, storage resource 
+
+management, and a support platform delivered over the cloud
+
+Multicloud enabled
+
+IBM Storage Virtualize on-premises and IBM Storage Virtualize for Public Cloud together 
+support mirroring between on-premises and cloud data centers or between cloud data 
+centers. These functions can be used to perform the following tasks:
+ Migrate data between on-premises and public cloud data centers or between public cloud 
+
+data centers. Enjoy consistent data management between on-premises storage and the 
+public cloud.
+
+ Implement disaster recovery strategies between on-premises and public cloud data 
+centers.
+
+ Enable cloud-based DevOps to more easily replicate data from on-premises sources.
+ Improve cyber resilience with copies on Amazon Web Services (AWS) by using air gap 
+
+snapshots to S3 and IBM Safeguarded Copy on Microsoft Azure.
+
+Customers can create hybrid multicloud solutions for their traditional block data and 
+workloads by using built-in IP replication capabilities. 
+
+Deploy IBM Storage Virtualize for Public Cloud on AWS directly from AWS Marketplace 
+through a predefined Cloud Formation Template that automatically and securely installs the 
+software, and deploys a high availability two-node cluster on selected EC2 instances. Any 
+Amazon EBS block storage can be attached. 
+
+On Azure, deploy directly from the Azure Apps Marketplace through predefined Azure 
+Resource Manager templates that automatically and securely install the software, and deploy 
+an HA two-node cluster on selected Azure VMs. Attach shared Azure Managed Disk 
+solid-state drives (SSDs) to the cluster for HA. 
+
+On IBM Cloud®, automated installation scripts assist deployment of the software on bare 
+metal servers. IBM Performance or Endurance block storage is supported behind the cluster. 
+This setup enables clients to create clustered configurations, such as on-premises, and 
+includes the optimization and virtualization capabilities of IBM Storage Virtualize to public 
+cloud infrastructures. 
+3
+
+
+
+IBM Storage Virtualize on-premises and IBM Storage Virtualize for Public Cloud together 
+enable a hybrid multicloud deployment. The deployment provides a single data management 
+layer between on-premises systems and the cloud across heterogeneous storage pools that 
+might exist in the data center. 
+
+IBM Storage Virtualize provides the following functions:
+ Storage pooling and automated allocation with thin provisioning
+ IBM Easy Tier® automated tiering
+ Deduplication and compression to reduce cloud storage costs
+ IBM FlashCopy® and remote mirror for local snapshots and remote replication
+ IBM Safeguarded Copy for cyber resiliency
+ Support for virtualized and containerized server environments:
+
+– VMware
+– Microsoft Hyper-V
+– IBM PowerVM®
+– Red Hat OpenShift
+– CRI-O
+– Kubernetes
+
+For more information about IBM FlashSystem systems and Hybrid Multicloud, see Embracing 
+Hybrid Cloud: Storage Edition.
+
+Data resilience
+
+The IBM FlashSystem 7300 provides advanced capabilities that can help maximize data 
+protection, security, and HA to significantly reduce the risk of disruption and financial losses 
+because of user errors, malicious destruction, or ransomware attacks. The FlashSystem 7300 
+delivers the capability to enable this level of protection while also delivering high performance 
+for applications.
+
+With Safeguarded Copy, the IBM FlashSystem 7300 adds a line of defense against 
+cyberthreats by protecting your valued data from cyberattacks with immutable and isolated 
+copies that are hidden, nonaddressable, and cannot be altered. If an attack occurs, these 
+copies can be restored quickly to support recovery. Customized to your specific application 
+mix, IBM FlashSystem Cyber Vault builds on IBM Safeguarded Copy to help reduce 
+cyberattack recovery times. 
+
+A Cyber Vault solution runs continuously and monitors snapshots as they are created 
+automatically by Safeguarded Copy. By using standard database tools and automation 
+software, Cyber Vault checks Safeguarded Copy snapshots for corruption. If Cyber Vault finds 
+such changes, then that is an immediate sign that an attack might be occurring.
+
+When preparing a response, knowing the last snapshots with no evidence of an attack 
+speeds determining which snapshot to use. Because Safeguarded Copy snapshots are on 
+the same FlashSystem storage as operational data, recovery is fast by using the same 
+snapshot technology. With these advantages, Cyber Vault is designed to help reduce 
+cyberattack recovery time from days to just hours.
+4 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Advanced data services 
+
+The IBM FlashSystem 7300 system provides the following advanced data services:
+ Business continuity with replication services across up to three sites
+ Data protection with IBM FlashCopy services
+ HA with IBM HyperSwap
+ Higher storage efficiency with thin provisioning
+ DRPs that provide compression with deduplication
+ Data-at-rest AES-XTS 256 encryption
+ IBM Easy Tier
+ External virtualization
+ Data migration
+ IP quorum support
+ N_Port ID virtualization (NPIV) support
+ VMware vSphere Virtual Volume (VVOL) support and space-efficient copies
+ TCT
+ Data and cyber resilience with IBM Safeguarded Copy
+ Container support with the IBM block storage CSI driver
+ Capacity and performance scaling through clustering
+
+IBM FlashSystem 7300 enclosure overview 
+
+The IBM FlashSystem 7300 system includes the following types of enclosures: 
+ A control enclosure manages your storage systems, communicates with the host, and 
+
+manages interfaces. It can also house up to 24 NVMe-capable flash drives. These drives 
+can be industry-standard NVMe types or the exclusive IBM FCM NVMe-type and up to 12 
+optional Storage Class Memory (SCM) type class drives.
+
+ An expansion enclosure increases the available capacity of an IBM FlashSystem 7300 
+cluster. It communicates with the control enclosure through a dual pair of 12 Gbps SAS 
+connections. These expansion enclosures can house many flash (SSD) and hard-disk 
+drive (HDD) serial-attached SCSI (SAS) drives, depending on which enclosure model is 
+ordered. FCM's are not permitted in any of the SAS Expansion Enclosures.
+
+Figure 1 shows the IBM FlashSystem 7300 control enclosure front view with an NVMe drive 
+partially removed. 
+
+Figure 1   IBM FlashSystem 7300 control enclosure with one NVMe drive partially removed
+5
+
+
+
+Control enclosures 
+Each control enclosure can have multiple attached expansion enclosures, which expand the 
+available capacity of the entire system. The IBM FlashSystem 7300 solution supports up to 
+four control enclosures and up to two chains of SAS expansion enclosures per control 
+enclosure.
+
+The IBM FlashSystem 7300 control enclosure supports up to 24 NVMe-capable flash drives 
+in a 2U high form factor and consists of one machine type: 4657. The 4657 is available in two 
+models: 924 and U7D.
+
+The 4657-U7D model is an IBM FlashSystem 7300 solution with a 1-year warranty, with 
+optional Storage Expert Care service offerings, and is intended for the Storage Utility Offering 
+space. This model is physically and functionally identical to the IBM FlashSystem 4657-924 
+model, except for target configurations and variable capacity billing. The variable capacity 
+billing uses IBM Spectrum Control or IBM Storage Insights to monitor the system usage, 
+which allows allocated storage use that is greater than a base subscription rate to be billed 
+per terabyte per month. Allocated storage is identified as storage that is allocated to a specific 
+host and unusable to other hosts, regardless of whether data is written. For thin-provisioning, 
+the data that is written is considered used. For thick-provisioning, the total allocated volume 
+space is considered used.
+
+Expansion enclosures
+The IBM FlashSystem 7300 expansion enclosures consist of one machine type, 4657, and 
+three models, 12G, 24G, and 92G.
+
+The new SAS-based small form factor (SFF) and large form factor (LFF) expansion 
+enclosures support various flash and SSD MDisks in a storage pool, which can be used for 
+IBM Easy Tier. 
+
+Consider the following points:
+ IBM FlashSystem 7000 LFF Expansion Enclosure Model 12G offers drive options with 
+
+SAS drives. Up to 144 drives in 12 SAS 12G expansions are supported per 
+IBM FlashSystem 7300 control enclosure. The expansion enclosure is 2U high.
+
+ IBM FlashSystem 7000 SFF Expansion Enclosure Model 24G offers drive options with 
+SSD flash and SAS drives. Up to 288 drives in 12 SAS 24G expansions are supported per 
+IBM FlashSystem 7300 control enclosure. The expansion enclosure is 2U high.
+
+ IBM FlashSystem 7000 LFF Expansion Enclosure Model 92G offers drive options with 
+SSD flash and SAS drives. Up to 368 drives in 4 SAS 92G expansions are supported per 
+IBM FlashSystem 7300 control enclosure. The expansion enclosure is 5U high.
+
+SAS chain maximums
+Each SAS chain can have a maximum total chain weight of 5 or 6, depending on code 
+version. Each 92G enclosure has a chain weight of 2.5; each 12G or 24G enclosure has a 
+chain weight of 1.
+
+For example, it is valid to have two 92G enclosures and one 24G enclosure (total chain weight 
+of 6). Each control enclosure supports 2 SAS chains.
+
+For more information, see Enclosures.
+
+Note: Attachment and intermixing of IBM Storwize® V7000 Expansion Enclosures Models 
+12F, 24F, and 92F with FlashSystem 7300 Expansion Enclosure Models 12G, 24G, and 
+92G is not supported.
+6 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+The IBM FlashSystem 7300 control enclosure can be identified by the labeling 
+“IBM FlashSystem 7300” on the left side of the bezel cover, which covers the rack-mounting 
+screws. 
+
+Figure 2 shows the IBM FlashSystem 7300 bezel and NVMe drive.
+
+Figure 2   IBM FlashSystem 7300 bezel and IBM FCM description
+
+Labeling on the NVMe drive provides the drive type, capacity, type of drive, and FRU number. 
+The example that is shown in Figure 2 is the IBM FCM NVMe 19.2 TB.
+
+Placing your IBM FlashSystem 7300 in your infrastructure
+Various use cases exist for the IBM FlashSystem 7300, all of which can address many 
+technical and business requirements. In addition, the IBM FlashSystem 7300 can be used to 
+simplify the overall storage architecture.
+
+The IBM FlashSystem 7300 can be used in the following scenarios:
+ First tier storage repository for production data
+ Primary or target system for Data Replication or Disaster Recovery (DR)
+ HA storage within a HyperSwap configuration where two IBM FlashSystem 7300s are in a 
+
+synchronous replication relationship
+7
+
+
+
+ Externally virtualizing IBM or non-IBM storage by using IBM Storage Virtualize, which 
+extends advanced functions such as data reduction, encryption, and replication to those 
+storage subsystems
+
+ Data migration from IBM or non-IBM storage with IBM Storage Virtualize
+ Hybrid cloud storage by:
+
+– Enabling communication between an on-premises deployment of IBM Storage 
+Virtualize and IBM Storage Virtualize for Public Cloud
+
+– Deploying the Container Storage Interface (CSI) driver for Red Hat OpenShift 
+Container Platform to provide persistent storage for on-premises or cloud-based 
+containerized applications
+
+– Using TCT to convert data into an object store for back up to specific available cloud 
+instances
+
+ Support and interoperability within the IBM Storage Software Suite, which include:
+– IBM Storage Scale where the IBM FlashSystem 7300 can be used as the back-end 
+
+storage repository for metadata, primary data or in initial microprogram load (IML) 
+processing
+
+– IBM Storage Protect and IBM Storage Protect Plus where the IBM FlashSystem 7300 
+can be used as a cache or data repository
+
+– IBM Copy Data Management where the IBM FlashSystem 7300 can be used as a 
+cache or as a copy services target
+
+Figure 3 shows an IBM FlashSystem 7300 that is fully deployed in a hybrid multicloud 
+environment where it is also externally virtualizing various on-premises storage subsystems. 
+
+Figure 3   Fully deployed IBM FlashSystem 7300 sample scenario
+
+The IBM FlashSystem 7300 can support multiple Open System hosts and interoperability with 
+all the software from the IBM Storage Suite of products.
+8 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+In this scenario, the IBM FlashSystem 7300 provides the following benefits:
+ Investment protection of older storage by using IBM Storage Virtualize to enable migration 
+
+from older storage and external virtualization of heterogeneous storage
+ A hybrid multicloud architecture by connecting to IBM Storage Virtualize for Public Cloud, 
+
+which is available in AWS, Azure, and IBM public cloud
+ Data protection by extending HA and DR to externally virtualized heterogeneous storage
+ Support for containerized workloads by interfacing with Red Hat OpenShift and 
+
+Kubernetes in on-premises and off-premises infrastructures
+ Ease of management and seamless integration with the IBM Storage Insights and all the 
+
+products in the IBM Storage Software Suite
+
+Features of IBM FlashSystem 7300
+IBM FlashSystem 7300 runs on IBM Storage Virtualize V8.6 Licensed Machine Code, which 
+provides the following features:
+ Control enclosure support for SSDs, including up to 24 industry 2.5-inch Small Form 
+
+Factor (SFF) standard NVMe drives and IBM FCMs and up to 12 SCM drives 
+The following NVMe drives are supported:
+– 2.5-inch SFF 4.8 TB, 9.6 TB, 19.2 TB, or 38.4 TB IBM FCMs
+– 1.92 TB, 3.84 TB, 7.68 TB, 15.36 TB, or 30.72 TB industry-standard NVMe drives
+– A mixture of both
+– 1.6 TB SCM drives
+
+ Autonomic tiering through Easy Tier, which enables workload data to be placed on the 
+most suitable storage media:
+– various classes of NVMe drives for the control enclosure
+– HDDs and commodity SSDs for the expansion enclosures and externally virtualized 
+
+storage
+ Hardware-based data reduction and encryption from IBM FCMs with negligible effect on 
+
+system performance.
+ Scale out capacity options with the 12 Gbps SAS-attached model 12G, 24G, and 92G 
+
+expansion enclosures.
+ Software-based AES-256 data-at-rest encryption and key management through 
+
+IBM Security Guardium Key Lifecycle Manager or USB key encryption. Up to four Security 
+Guardium Key Lifecycle Manager key servers are supported.
+
+ Remote Support Assistance (RSA), which enables IBM support personnel to access the 
+system to complete troubleshooting tasks. 
+
+ Multiple data-protection solutions such as FlashCopy (point-in-time-copy), Metro Mirror 
+(synchronous replication), and Global Mirror (asynchronous replication).
+
+ Cyber resiliency with Safeguarded Copy, which provides rapid ransomware recovery by 
+using immutable, untouchable snapshots that are based on FlashCopy technology.
+
+ Multiple management modes by using a graphical user interface (GUI) or a Linux-based 
+command-line interface (CLI).
+
+ Performance throttling that allows control of used resources when the system is 
+processing host I/O, advanced functions, or copy services.
+9
+
+
+
+ TCT, which enables a FlashCopy volume that can be backed up to an S3 object store, 
+such as AWS or IBM Cloud.
+
+ Support for 32 Gbps FC and 10/25 GBE or 100 Gbps Ethernet iSCSI and NVMe RDMA 
+connectivity. The ability to intermix these port options is also supported.
+
+ Simplified connectivity by using portsets, which enable host connectivity ports to be 
+grouped for more effective zoning and management.
+
+ Compatibility with IBM Storage Insights, which offers advanced performance monitoring 
+for one or more IBM FlashSystem 7300s.
+
+ Extra access security through multi-factor authentication. 
+
+In addition to the base warranty, the IBM FlashSystem 7300 offers IBM Storage Expert Care 
+with three levels of support options. For more information, see “IBM Storage Expert Care” on 
+page 15.
+
+Current release functions
+This section describes several new functions and features that are available in the current 
+IBM FlashSystem 7300 release.
+
+New in IBM FlashSystem 7300 Software V8.6.0
+
+For a complete list of new features, see What’s new in 8.6.0. Version 8.6.0 includes the 
+following new features. 
+ Support for Non-Volatile Memory express (NVMe) over TCP host connectivity
+
+The Ethernet-based hosts connect to the system through the node-to-node IP addresses. 
+These can be assigned based on the host attach functionality and port assignments of the 
+node. Depending on your system configuration, Ethernet configurations can include 
+iSCSI, NVMe over RDMA, or NVMe over TCP.
+
+ Support for Node CLI to shutdown individual Fibre Channel ports
+This command can enable or disable the Fibre Channel port features. The Fibre Channel 
+port supports features like fabric device management interface (FDMI) registration, 
+discovery, and port state. 
+
+ Support for iSCSI performance improvement.
+ An I/O group is two nodes, which is a single enclosure of an IBM FlashSystem 7300. 
+
+Support for 1024 iSCSI hosts per I/O group with the following maximums:
+– 1024 hosts per I/O group for all supported node types 
+– 1024 sessions per system iSCSI target from different iSCSI hosts
+– 2048 sessions per I/O group from iSCSI host
+– Four sessions from one iSCSI host to each system iSCSI target 
+
+ Support for migrating remote copy to policy-based replication
+Policy-based replication uses volume groups and replication policies to automatically 
+deploy and manage replication. Policy-based replication can significantly simplify 
+configuring, managing, and monitoring replication between two systems. With 
+policy-based replication, you can replicate data between systems with minimal 
+management, higher throughput, and reduced latency compared to the remote-copy 
+function.
+
+ Support for SMTP authentication
+10 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+ Support for TLS 1.3
+Security of all key server communications is governed by TLS 1.2 and TLS 1.3 protocols. 
+Encryption keys are distributed between nodes in the system that use TLS 1.2 and 
+TLS1.3. The system uses AES-256 encryption that uses OpenSSL library interfaces. To 
+establish a connection between the key server and the system, the key server or services 
+must support the configured TLS version.
+
+ Support for DNS check to be turned off
+ Support for FDMI information in Call Home
+
+The Fabric Device Management Interface (FDMI) enables any storage endpoint to register 
+itself to the Fibre Channel (FC) fabric and query the HBA and port details of the entire 
+fabric.
+
+ Support for version 2 metadata volume for VMware Virtual Volumes (vVols)
+IBM Storage Virtualize version 8.6.0.0 and later support a version 2 metadata volume 
+when configuring VMware Virtual Volumes (vVols). A metadata volume that is created on 
+earlier versions uses a version 1 metadata format. It is a best practice that users migrate 
+the metadata volume from version 1 to version 2 to take advantage of future feature 
+updates for vVols.
+
+ Enhancement to IBM Storage Insights for threat detection
+A key part of monitoring your system includes the detection of potential ransomware 
+attacks. To ensure that you have the most recent storage metadata for detecting those 
+types of attacks, compression and cyber resiliency statistics for volumes are collected 
+every 5 minutes. With these statistics, IBM Storage Insights builds a historical model of a 
+storage system and uses its built-in intelligence and formulas to identify when and where 
+ransomware attacks might be occurring. For more information on statistics, see Starting 
+statistics collection.
+
+ Support for non-superuser ability to manage the system.
+Users can manage all functions of the system, including managing users, user groups, 
+user authentication, and configuring encryption. Users with the Security Administrator role 
+can run any system commands from the command-line interface (CLI). However, they 
+cannot run the satask command from the CLI. Only the superuser ID can run satask 
+command. Like the Administrator role, users with Security Administrator privileges can 
+also create and configure the Safeguarded Copy function and create and manage 
+Safeguarded policies. However, they can also change or remove existing Safeguarded 
+backup copies and child pools that are used as Safeguarded backup locations.
+
+ Support for downloading software updates through Call Home by using Restful API.
+ Support for 28 Ethernet ports per node
+ For IBM Storage Virtualize version 8.6.0 and later, more than a single distributed raid 
+
+(DRAID) array can be used in the same storage pool that has compressing drives.
+
+Highlights 
+IBM FlashSystem 7300, machine type 4657, offers IBM Storage Expert Care service and 
+support options with IBM Storage Virtualize software, IBM FCMs, IBM Storage Insights, and 
+storage-class memory to deliver an NVMe accelerated, hybrid cloud-enabled storage system. 
+
+IBM FCMs and the use of storage-class memory as a higher-level storage tier enables 
+IBM FlashSystem 7300 to deliver the highest available performance with the lowest latencies 
+in its class.
+11
+
+
+
+IBM FlashSystem 7300 is the replacement for IBM FlashSystem 7200. It is a 2U, 24 NVMe, 
+dual controller drawer that uses the second release from Intel of the Cascade Lake processor 
+for greater performance.
+
+IBM FlashSystem 7300 utility model U7D delivers a variable capacity system, where billing is 
+based on provisioned space that is greater than the base. The base subscription is covered 
+by a three-year lease that entitles you to use the base capacity at no extra cost. If storage 
+needs increase beyond the base capacity, usage is billed based on the average daily 
+provisioned capacity per terabyte, per month, on a quarterly basis.
+
+IBM FlashCore technology
+
+At the heart of the IBM FlashSystem 7300 system is IBM FlashCore® technology, if the 
+IBM FCMs are ordered, which consists of the following key elements:
+ Hardware-accelerated architecture that is engineered for flash, with a hardware-only data 
+
+path.
+ The IBM FlashSystem® data compression and decompression algorithm is a modified 
+
+dynamic GZIP algorithm. Because it is implemented completely in hardware, no processor 
+intervention is required.
+
+ IBM FCMs, which are designed for low latency, density, and reliability.
+ IBM Advanced Flash Management, which improves flash endurance over standard 
+
+implementations without sacrificing latency.
+
+Figure 4 shows IBM FlashCore technology.
+
+Figure 4   IBM FlashCore technology
+12 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+For more information about IBM FlashCore technology, see What is flash storage? 
+
+or the Redpaper about FlashCore Modules
+
+IBM FlashCore Module (FCM) Product Guide
+
+Storage Class Memory
+
+SCM is an industry-wide statement for nonvolatile memory devices that perform faster 
+(~10 µs) than traditional NAND SSDs (100 µs) but slower than DRAM (100 ns). 
+
+The technology pricing sits between dynamic random access memory (DRAM) and traditional 
+NAND. Price is significantly more expensive than traditional NAND drives.
+
+The IBM FlashSystem 7300 system supports the new low-latency, high-speed SCM drives in 
+any of the slots of the control enclosure. The control enclosure can contain up to 12 SCM 
+drives.
+
+Note: SCM and other NVMe drive types can be installed in any drive slot. However, the 
+highest capacity drives must be installed in the lowest available drive slots.
+
+SCM with Easy Tier
+SCM with Easy Tier is designed to decrease latency and sometimes, improve IOPS. If you 
+want to realize the full benefit of SCM across all of your capacity, Easy Tier continually and 
+automatically moves the hottest data onto the SCM tier and leaves the rest of the data on the 
+lower tiers. This autonomic tiering can also benefit DRPs where the metadata is moved to the 
+SCM drives. 
+
+If you have a specific workload that requires the best performance and lowest latency, and it 
+fits in the limited SCM capacity available, use SCM as a separate pool and decide which 
+workloads use that pool. Because of their faster speed, SCM drives are placed in a new top 
+tier of Easy Tier. This new tier is ranked higher than the existing tier0_flash that is used for 
+NVMe NAND drives that are supported today. 
+
+The following Easy tier levels are available:
+ SCM
+
+This tier exists when the pool contains drives that use persistent memory technologies 
+that improve endurance and speed of current flash storage device technologies. 
+
+ Tier 0 flash
+This tier exists when the pool contains high-performance flash drives.
+
+ Tier 1 flash
+This tier exists when the pool contains tier 1 flash drives. Tier 1 flash drives typically offer 
+larger capacities, but slightly slower performance and lower write endurance. 
+
+ Enterprise tier
+This tier exists when the pool contains enterprise-class MDisks, which are disk drives that 
+are optimized for performance.
+
+ Nearline tier
+This tier exists when the pool contains nearline-class MDisks, which are disk drives that 
+are optimized for capacity. 
+13
+
+
+
+Hot data is placed in the SCM tier when Easy Tier is enabled. DRP and VG extent allocation 
+was tuned to use SCM drives, especially for metadata such as directory volume lookups. This 
+use case is one of the main use cases for SCM drives with an IBM FlashSystem 7300 
+system.
+
+SCM and RAID configurations
+SCM drives feature the following rules about RAID supported configurations: 
+ Distributed DRAID 1 with two drives or more (including distributed spare capacity) and is 
+
+the best practice configuration.
+ Distributed DRAID 5 with four drives or more (including distributed spare capacity) is 
+
+supported. DRAID 5 is available as an RPQ only. 
+ Distributed DRAID 6 with six drives or more (including distributed spare capacity) is 
+
+supported. 
+ Traditional TRAID 1 and 10 with two drives is supported; however, no spare is available, 
+
+and performance might be limited. 
+ SCM drives have their own SCM technology type and drive class.
+ SCM and Standard NVMe or SAS cannot intermix in the same array.
+ Easy Tier tier_scm arrays can take lower tech types as spare drives when no tier_scm 
+
+drives are available.
+ Lower-tier arrays can accept tier_scm drives as superior drives.
+
+SCM drive formatting and UNMAPS 
+Because of its media technology, SCM drive formats take longer to format than a typical 
+NVMe drive. Formatting a drive can take 15 minutes until the process completes.
+
+SCM drive formats occur when one of the following conditions exists:
+ A drive is replaced
+ An enclosure is managed
+ An array or MDisk is removed
+
+Note: Intel Optane drives do not support UNMAPs because it is not beneficial for these 
+drives. Instead, the system writes zeros to deallocate drive sectors.
+14 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+IBM Storage Expert Care
+
+IBM FlashSystem 7300 is a client-installed product and is being released with a one-year 
+warranty and the ability to include IBM Storage Expert Care Basic, Advanced, or Premium.
+
+Figure 5 shows IBM Storage Expert Care levels.
+
+Figure 5   IBM Storage Expert Care levels
+
+IBM Storage Expert Care BASIC
+The IBM Storage Expert Care BASIC option includes the following support features:
+ Duration: 1–5 years
+ IBM On-Site repair, which coverage includes 9–5 and Next Business Day Support that is 
+
+based on the duration that you choose 
+ Licensed Machine Code subscription and support
+ IBM Storage Expert Care services:
+
+– Installation, usage, and configuration support line. Physical installation is chargeable.
+– Predictive alerting.
+– Automated ticket management.
+
+IBM Storage Expert Care ADVANCED
+The IBM Storage Expert Care ADVANCED option includes the following support features:
+ Duration: 1–5 years
+ IBM On-site Repair coverage includes 24x7, Same Day Support that is based on the 
+
+duration that you choose
+ Licensed Machine Code subscription and support
+15
+
+
+
+ IBM Storage Expert Care services:
+– Installation, usage, and configuration support line. Physical installation is chargeable.
+– Proactive issue resolution.
+– Predictive alerting.
+– Automated ticket management.
+
+IBM Storage Expert Care PREMIUM
+The IBM Storage Expert Care PREMIUM option includes the following support features:
+ Duration: 1–5 years
+ IBM On-Site Repair coverage includes 24x7 Same Day Support that is based on the 
+
+duration that you choose 
+ Enhanced response time for defect support:
+
+– Response time is defined as the elapsed time between technical support receipt of the 
+client problem submission and the acknowledgment of the submission.
+
+– 30-minute targeted response time objectives for Severity 1 and Severity 2 problem 
+reports.
+
+ Licensed Machine Code subscription and support
+ IBM Storage Expert Care services:
+
+– Installation, usage, and configuration support line. Physical installation is chargeable.
+– Proactive issue resolution.
+– Predictive alerting.
+
+ Automated ticket management
+ IBM Storage Insights Pro with more detailed reports and planning
+ Remote Code Load including code upgrades that are provided by IBM remote support 
+
+representatives up to twice per year to keep your systems updated
+ Onsite code load services that are available by ordering feature code #AHY2 - Remote 
+
+code load exception when required
+ Dedicated Technical Account Manager
+
+Note: The Technical Account Manager serves as the key client interface for in-scope 
+hardware and software. It delivers partnership and consultancy, and direct engagement on 
+high-priority support cases.
+
+IBM FlashWatch overview 
+
+IBM FlashWatch is a new offering from IBM to complement the purchase of the 
+IBM FlashSystem 7300. It features three main focus areas: 
+ Acquisition:
+
+– High availability guarantee:
+• Proven 99.9999% availability.
+• Optional 100% commitment when using HyperSwap.
+
+– Data reduction guarantee:
+• 3:1 self-certified.
+• Up to 5:1 with workload profiling.
+16 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+– All-inclusive licensing
+All storage functions are included in the licensing cost for internal storage.
+
+ Operation:
+– Cloud analytics
+
+Storage Insights is included at no extra cost to proactively manage your environment.
+– Flash endurance guarantee
+
+Flash media is covered for all workloads while under warranty or maintenance.
+ Migration:
+
+– IBM Flash Momentum - Storage Upgrade Program
+Replace your controller and storage every three years with full flexibility.
+
+– Cloud-like pricing
+Storage Utility pricing features monthly payments for only the storage that you use.
+
+– No cost migration
+A total of 90 days no-cost data migration from over 500 storage controllers, IBM, and 
+non-IBM.
+
+For more information about the IBM FlashWatch offering, see IBM Support’s IBM FlashWatch 
+FAQ.
+
+The IBM FlashWatch offering is applicable across the IBM Storage Virtualize family, with the 
+Product Matrix in the FAQ detailing the elements that are applicable against which product.
+
+IBM Storage Insights
+IBM Storage Insights is an IBM Cloud Software as a Service offering that can help you 
+monitor and optimize the storage resources in the system and across your data center. 
+
+IBM strongly recommends that all customers install and use this no-charge, cloud-based 
+IBM application because it provides a single dashboard that gives you a clear view of all your 
+IBM block storage. You can make better decisions by seeing trends in performance and 
+capacity. 
+
+With storage of health information, you can focus on areas that need attention, and when 
+IBM support is needed. IBM Storage Insights simplifies uploading logs, speeds resolution 
+with online configuration data, and provides an overview of open tickets all in one place.
+
+IBM Storage Insights includes the following features:
+ A unified view of IBM systems:
+
+– Provides a single view to see all your system’s characteristics
+– Displays all of your IBM storage inventory
+– Provides a live event feed so that you know in near real-time the status of your storage
+
+ IBM Storage Insights collects telemetry data and Call Home data and provides real-time 
+system reporting of capacity and performance
+17
+
+
+
+ Overall storage monitoring, which provides the following information:
+– The overall health of the system.
+– Monitoring of the configuration to see whether it meets preferred practices.
+– System resource management to determine which system is overtaxed and provides 
+
+proactive recommendations to fix it.
+ IBM Storage Insights provides advanced customer service with an event filter that you can 
+
+use to accomplish the following tasks:
+– You and IBM Support can view, open, and close support tickets, and track trends. 
+– You can use the autolog collection capability to collect the logs and send them to 
+
+IBM before IBM Support looks into the problem. This capability can save as much as 
+50% of the time to resolve the case.
+
+In addition to the no-charge version of IBM Storage Insights, IBM offers IBM Storage 
+Insights Pro, which is a subscription service that provides longer historical views of data, 
+more reporting and optimization options, and supports IBM file and block storage with 
+EMC VNX and VMAX. 
+
+Customer dashboard 
+Figure 6 shows a view of the IBM Storage Insights main dashboard and the systems that it 
+monitors.
+
+Figure 6   IBM Storage Insights dashboard
+
+For more information about dashboard displays, see “IBM Storage Insights: Information and 
+registration” on page 19.
+
+For more information about the architecture and design overview of IBM Storage Insights, see 
+Implementation Guide for IBM Storage FlashSystem and IBM SAN Volume Controller Version 
+8.6, SG24-8542.
+18 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+IBM Storage Insights: Information and registration 
+For more information about IBM Storage Insights, see the following resources:
+ IBM Storage Insights Fact Sheet
+ Product demonstration (log in required)
+ IBM Storage Insights Security Guide, SC27-8774
+ IBM Storage Insights
+ Product registration (used to sign up and register for this no-charge service) 
+
+IBM Spectrum Connect
+IBM FlashSystem 7300 Software V8.5.0 and later supports integrating VASA and VAAI by 
+using IBM Spectrum Connect V3.11.0 or later. For more information about this feature, see 
+IBM Spectrum Connect.
+
+IBM Spectrum Control
+IBM Spectrum Control consolidates a range of IBM storage provisioning, virtualization, cloud, 
+automation, and monitoring solutions through a unified server platform. IBM Spectrum 
+Control provides insight and awareness about the configuration capabilities, storage health, 
+and events of a storage system regarding VMware and vSphere. With this capability, VMware 
+administrators can independently and centrally manage their storage resources on IBM 
+storage systems. For more information, see IBM Spectrum Control.
+
+IBM FlashSystem 7300 GUI
+Multiple IBM FlashSystem 7300 control enclosures can be connected to form a system, which 
+is sometimes called a cluster. A single management interface is used for the connected 
+IBM FlashSystem 7300 control enclosures. Each IBM FlashSystem 7300 node canister is an 
+individual server in an IBM FlashSystem 7300 clustered system, on which the 
+IBM FlashSystem 7300 software runs.
+
+The IBM FlashSystem 7300 system includes an easy-to-use management GUI that runs on 
+the IBM FlashSystem 7300 control enclosure to help you monitor, manage, and configure 
+your system. You can access the GUI by opening any supported web browser and entering 
+the management IP addresses. 
+
+You can connect from any workstation that can communicate with the IBM FlashSystem 7300 
+system. The IBM FlashSystem 7300 control enclosure is delivered in a 2U 19 inch 
+rack-mount enclosure.
+
+Figure 7 on page 20 shows the IBM FlashSystem 7300 GUI dashboard.
+19
+
+
+
+Figure 7   IBM FlashSystem 7300 GUI showing the dashboard
+
+Figure 8 shows the control enclosure window. You can open this window by selecting 
+Monitoring → System Hardware from the left side menu. 
+
+Figure 8   IBM FlashSystem 7300 system overview of the control enclosure
+
+The IBM FlashSystem 7300 system includes a CLI, which is useful for scripting, and a GUI for 
+simple and familiar management of the product. The IBM FlashSystem 7300 system supports 
+Simple Network Management Protocol (SNMP), email forwarding that uses Simple Mail 
+Transfer Protocol (SMTP), and syslog redirection for complete enterprise management 
+access. 
+20 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+With the GUI, you can quickly deploy storage and manage it efficiently. The GUI runs on the 
+IBM FlashSystem 7300 control enclosure, so a separate console is not needed. Point your 
+web browser to the system IP address. You can manage all of the control and expansion 
+enclosures from the GUI.
+
+The IBM FlashSystem 7300 control enclosure node canisters are configured for active-active 
+redundancy. The node canisters run a highly customized Linux-based operating system that 
+coordinates and monitors all significant functions in the system.
+
+The node canisters provide a web interface, Secure Shell (SSH) access, and SNMP 
+connectivity through external Ethernet interfaces. By using the web and SSH interfaces, 
+administrators can monitor system performance and health metrics, configure storage, and 
+collect support data, among other features.
+
+The storage configuration includes defining logical units with capacities, access policies, and 
+other parameters. Except for a web browser or a standard SSH client, no additional software 
+is required on host computers to administer the IBM FlashSystem 7300 system.
+
+Supported platforms
+
+The IBM FlashSystem 7300 system features extensive interoperability and supports a wide 
+range of operating systems that includes Microsoft Windows Server, Linux, and IBM AIX® 
+and IBM i, hardware platforms (IBM Power Systems, and x86 & x86_64 servers), host bus 
+adapters (HBAs), and SAN fabrics. For more information, see this IBM Support web page and 
+the IBM System Storage Interoperation Center.
+
+IBM FlashSystem 7300 hardware component overview 
+The following sections provide an overview of the IBM FlashSystem 7300 hardware 
+components.
+
+Control enclosure
+
+The IBM FlashSystem 7300 control enclosure is a 2U rack-mounted NVMe flash memory 
+enclosure that is based on IBM flash technology and provides the primary management 
+interface (GUI) and the host interface configuration. The IBM FlashSystem 7300 control 
+enclosures support Fibre Channel Protocol (FCP), NVMeOF on FC, and iSCSI interfaces. 
+RoCE and iWARP protocols are supported by iSCSI and NVMe RDMA.
+
+The IBM FlashSystem provides the following NVMe technologies:
+ Supports unique world class IBM drives with inline compression
+ Supports industry-standard NVMe drives
+ Option for Intel Optane or Samsung zSSD SCM type drives
+ NVMe-oF on FC
+ The IBM FlashSystem 7300 system is offered as two models:
+
+– 4657 Model 924 - IBM FlashSystem 7300 SFF NVMe Control Enclosure
+– 4657 Model U7D - IBM FlashSystem 7300 SFF NVMe Control Enclosure
+
+Note: The U7D utility-based model uses fixed configurations because they are 
+Capacity on Demand (CoD)-based offerings.
+21
+
+
+
+ Macroefficiency with up to 1380 TB of raw maximum protected capacity with inline 
+hardware data compression if you use IBM FCMs.
+
+ Support for industry-standard NVMe drives with up to 368 TB of maximum raw capacity.
+ Extreme performance with IBM MicroLatency FCMs.
+ Optional expansion enclosures provide tiering options with SSD flash drives.
+
+The IBM FlashSystem 7300 configuration includes the following components:
+ A total of 1–4 IBM FlashSystem 7300 control enclosures.
+ A total of 1–12 IBM FlashSystem 7000 SFF or Large Form Factor (LFF) 2U expansion 
+
+enclosures.
+ A total of 1–4 IBM FlashSystem 7000 LFF High Density (LFF HD) expansion enclosures 
+
+per 7300 control enclosure. 
+
+The control enclosure includes integrated AC power supplies and battery units inside each of 
+the node canisters. These batteries supply power to the control enclosure during a sudden 
+power loss or failure so that the system can correctly commit all transactions to the storage 
+medium.
+
+The IBM FlashSystem 7300 control enclosure includes the following features: 
+ Full internal redundancy:
+
+– Redundant and hot-swappable node canisters
+– Redundant and hot-swappable batteries within each node canister
+– Redundant and hot-swappable power supplies, DIMMs, and fans
+
+ The control enclosure supports up to 24 NVMe 2.5-inch drives, which can be IBM FCMs 
+or industry-standard NVMe drives: 
+– The following 2.5-inch (SFF) IBM FCMs are supported in IBM FlashSystem 7300 
+
+control enclosures:
+• 4.8 TB 2.5-inch NVMe FCM
+• 9.6 TB 2.5-inch NVMe FCM
+• 19.2 TB 2.5-inch NVMe FCM
+• 38.4 TB 2.5-inch NVMe FCM
+
+– The following 2.5-inch (SFF) NVMe industry-standard drives are supported in 
+IBM FlashSystem 7300 control enclosures:
+• 1.92 TB 2.5-inch NVMe flash drive
+• 3.84 TB 2.5-inch NVMe flash drive
+• 7.68 TB 2.5-inch NVMe flash drive
+• 15.36 TB 2.5-inch NVMe flash drive
+• 30.72 TB 2.5-inch NVMe flash drive
+
+– A maximum of twelve 1.6 TB NVMe Storage Class Memory Drives.
+– All drives are dual-port and hot-swappable. Drives of the same form factor and 
+
+connector type can be intermixed within an enclosure. 
+– All flash modules must be of the same type and capacity within the same DRAID6 
+
+array.
+ Some other considerations for DRAID:
+
+– DRAID 1 is recommended for array configurations of three drives.
+– DRAID 1 is recommended for array configurations of four or five drives depending on 
+
+capacity and performance requirements, with DRAID 5 alternatively as an RPQ.
+22 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+– DRAID 1 and DRAID 6 are recommended for array configurations of 6 drives 
+depending on capacity and performance requirements.
+
+– DRAID 6 is recommended for array configurations with seven or more drives.
+– DRAID 5 is available through a SCORE request for array configurations of three to 
+
+eight drives.
+ Each IBM flash memory module contains IBM enhanced flash chips, FPGA chips, an 
+
+IBM PowerPC® processor, and dynamic random access memory (DRAM) devices that 
+are connected to the flash controllers and processor.
+
+ Total 40 cores (Two node canisters, each with two 10-core processors).
+ Cache options from 256 GB (128 GB per canister) to 1.5 TB (768 GB per canister).
+ Eight on-board 10 Gbps Ethernet ports standard for iSCSI connectivity.
+ 32 Gbps FC, 10/25 Gbps Ethernet, and 100 Gbps Ethernet ports for FC and iSCSI 
+
+connectivity.
+ A PCIe adapter that provides 12 Gbps SAS ports for expansion enclosure attachment.
+
+The IBM FlashSystem 7300 control enclosure supports FCP with point to point (FC-P2P), 
+arbitrated loop (FC-AL), and switched fabric (FC-SW) topologies. FC interfaces can be 
+configured as N_port or NL_port types. 
+
+The FC ports are configured in NPIV mode. Therefore, the user must check that this 
+configuration is preferred for their installation. If not, this configuration must be changed from 
+the default when you set up the SAN infrastructure. 
+
+Full active-active multipathing across all interfaces is supported, although host software 
+support for this function can vary.
+
+Figure 9 shows the front view of the IBM FlashSystem 7300 control enclosure.
+
+Figure 9   IBM FlashSystem 7300 control enclosure front view
+
+The IBM FlashSystem 7300 control enclosure also includes the following expansion features:
+ Capability for adding into clustered systems with more IBM FlashSystem 7300 control 
+
+enclosures.
+
+Note: Machine type 4657 FlashSystem 7300 systems can be clustered with other 
+FlashSystem 7300 systems only. Clustering with machine types 2076, 4664, 4666, 
+9846, or 9848 is not supported.
+
+ For expansion enclosure Model 12G and Model 24G, a maximum of 12 SAS-attached 
+expansion enclosures are supported per IBM FlashSystem 7300 control enclosure. The 
+maximum number of supported drives is 144 SAS HDD type drives with expansion Model 
+12G and 288 SSD/SAS type drives with expansion Model 24G.
+
+ For expansion enclosure Model 92G, a maximum of 4 HD LFF expansion enclosures per 
+7300 controller, which provides a maximum of 368 SAS HDD type drives.
+23
+
+
+
+Figure 10 shows the components of the IBM FlashSystem 7300 control enclosure from the 
+rear, which includes the interface cards, power supply units, and the USB and Ethernet ports. 
+All components are concurrently maintainable, except for the passive mid-plane and power 
+interposer board. All external connections are from the rear of the system.
+
+Figure 10   Rear view of IBM FlashSystem 7300 control enclosure
+
+Note: The upper node canister is mounted upside down in the expansion enclosure. 
+Therefore, the port numbering must be read right to left.
+
+IBM FlashSystem 7300 Utility Model U7D 
+The IBM 4657 Model U7D is the FlashSystem 7300 hardware component that is used in the 
+Storage Utility Offering space. It is physically and functionally identical to the FlashSystem 
+7300 Model 924, except for target configurations and variable capacity billing. 
+
+The variable capacity billing uses IBM Storage Insights to monitor the system usage, which 
+allows allocated storage usage that is greater than a base subscription rate to be billed per 
+TB, per month. Allocated storage is identified as storage that is allocated to a specific host 
+(and unusable to other hosts), whether data is written. 
+
+For thin-provisioning, the data that is written is considered used. For thick provisioning, the 
+total allocated volume space is considered used. 
+
+IBM FlashSystem 7300 Utility Model U7D provides a variable capacity storage offering. 
+These models offer a fixed capacity, with a base subscription of approximately 35% of the 
+total capacity.
+24 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+IBM Storage Insights is used to monitor system usage, and capacity that is used. This usage 
+is billed on a capacity-used basis. With this billing structure, you can grow or shrink usage, 
+and pay for the configured capacity only.
+
+IBM FlashSystem utility models are provided for customers who can benefit from a variable 
+capacity system, in which billing is based only on provisioned space. The hardware is leased 
+through IBM Global Finance on a three-year lease, which entitles the customer to use 
+approximately 30–40% of the total system capacity at no extra cost (customer individual 
+contract dependent). If storage needs increase beyond that initial capacity, usage is billed 
+based on the average daily provisioned capacity per terabyte per month, on a quarterly basis.
+
+Example: A total system capacity of 115 TB
+A customer has an IBM FlashSystem 7300 utility model with 4.8 TB NVMe drives for a total 
+system capacity of 115 TB. The base subscription for such a system is 40.25 TB. During the 
+months where the average daily usage is less than 40.25 TB, no extra billing occurs.
+
+The system monitors daily provisioned capacity and averages those daily usage rates over 
+the month. The result is the average daily usage for the month.
+
+If a customer uses 45 TB, 42.5 TB, and 50 TB in three consecutive months, IBM Storage 
+Insights calculates the overage as listed in Table 1 (rounding to the nearest terabyte).
+
+Table 1   Billing calculations based on customer usage
+
+Average daily Base Overage To be billed
+
+45 TB 40.25 TB 4.75 TB 5 TB
+
+42.5 TB 40.25 TB 2.25 TB 2 TB
+
+50 TB 40.25 TB 9.75 TB 10 TB
+
+The total capacity that is billed at the end of the quarter is 17 TB per month in this example.
+
+Flash drive expansions can be ordered with the system in all supported configurations. 
+Table 2 lists the feature codes that are associated with the U7D utility model billing.
+
+Table 2   7300 U7D utility model billing feature codes
+
+Feature code Description
+
+#AE00 Variable Usage 1 TB/month
+
+#AE01 Variable Usage 10 TB/month
+
+#AE02 Variable Usage 100 TB/month
+
+These features are used to purchase the variable capacity that is used in the utility models. 
+The features (#AE00, #AE01, and #AE02) provide terabytes of capacity beyond the base 
+subscription on the system. Usage is based on the average capacity that is used per month. 
+The prior three months’ usage is totaled, and the corresponding number of #AE00, #AE01, 
+and #AE02 features ordered quarterly. 
+
+Billing 
+The local project office compiles the usage information from IBM Storage Insights on a 
+quarterly basis. This data is compared to the base system capacity subscription. Any 
+provisioned capacity beyond that base subscription is billed per terabyte per month on a 
+quarterly basis. 
+25
+
+
+
+The calculated usage is based on the average use over a month. In a highly variable 
+environment, such as managed or cloud service providers, this subscription enables the 
+system to use only as much as is necessary during any month. Usage can increase or 
+decrease and is billed based on the usage. 
+
+Provisioned capacity is considered capacity that is reserved by the system. Thick-provisioned 
+storage and thin-provisioned storage use flash drive space differently. For thick-provisioned 
+storage, the provisioned capacity is the amount that is allocated to a host, whether it has data 
+that is written. For thin-provisioned environments, the provisioned capacity is the amount of 
+data that is written. 
+
+IBM FlashSystem 7300 expansion enclosures
+
+IBM FlashSystem 7300 expansion enclosures are 2U or 5U rack-mounted units. The 
+expansion enclosures are offered in the following models with several drive features:
+ FlashSystem 7000 LFF Expansion Enclosure (4657 Model 12G):
+
+Supports a maximum of 12 LFF 3.5-inch HDD drives that can be formatted as DRAID 1or 
+DRAID.
+High-capacity, archival-class, nearline 7,200 rpm drives in: 6 TB, 8 TB, 10 TB, 12 TB, 
+14 TB, 16 TB, 18 TB, and 20 TB.
+
+ FlashSystem 7000 SFF Expansion Enclosure (4657 Model 24G)
+Supports a maximum of 24 SFF 2.5-inch drives that can be formatted as DRAID 1or 
+DRAID 6:
+– 800 GB 3DWPD 2.5-inch drives
+– High-performance, enterprise class disk 10,000 rpm drives in: 1.2 TB, 1.8 TB, and 
+
+2.4 TB
+– Flash drives in: 1.92 TB, 3.2 TB, 3.84 TB, 7.68 TB, 15.36 TB, and 30.72 TB
+
+ FlashSystem 7000 HD LFF Expansion Enclosure (4657 Model 92G) 
+Supports a maximum of 92 LFF 2.5-inch High-Density Drives in a 3.5-inch carrier, and can 
+be formatted as DRAID 1or DRAID 6:
+– High-capacity, archival-class, nearline 7,200 rpm drives in: 6 TB, 8 TB, 10 TB, 12 TB, 
+
+14 TB, 18 TB, and 20 TB.
+– High-performance, enterprise class disk 10,000 rpm drives in: 1.2 TB, 1.8 TB, and 
+
+2.4 TB. These drives are 2.5-inch drives in 3.5-inch carriers.
+– Flash drives in: 1.92 TB, 3.2 TB, 3.84 TB, 7.68 TB, 15.36 TB, and 30.72 TB (these are 
+
+2.5-inch drives in 3.5-inch carriers)
+
+Multiple expansion enclosures are supported per IBM FlashSystem 7300 control enclosure, 
+which provides:
+
+– A maximum of 144 drives with expansion enclosure 4657 Model 12G (12 drives in 12 
+expansion enclosures)
+
+– A maximum of 288 drives with expansion enclosure 4657 Model 24G (24 drives in 12 
+expansion enclosures)
+
+– A maximum of 368 drives with expansion enclosure 4657 Model 92G (92 drives in 4 
+expansion enclosures)
+26 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+On each SAS chain, the systems can support a maximum SAS chain weight of 5 or 6 
+depending on code level: 
+ Each 4657-12G or 4657-24G expansion enclosure adds a value of 1 to the SAS chain 
+
+weight.
+ Each 4657-92G expansion enclosure adds a value of 2.5 to the SAS chain weight.
+
+Note: Each SAS chain can have a maximum total chain weight of 5 or 6 depending on 
+code level. Each 92G enclosure has a chain weight of 2.5; each 12G or 24G enclosure has 
+a chain weight of 1.
+
+For example, it is valid to have two 92G enclosures and one 24G enclosure (total chain 
+weight of 6). For more information, see Enclosures.
+
+Figure 11 shows the front view of the IBM FlashSystem 7000 Expansion Enclosure 
+Model 12G.
+
+Figure 11   Front view of the IBM FlashSystem 7000 LFF Expansion Enclosure Model 12G
+
+The 12G model of the IBM FlashSystem 7000 LFF expansion enclosure includes the 
+following features:
+ Two expansion canisters
+ 12 Gbps SAS ports for attachment to the IBM FlashSystem 7300 control enclosures
+ 2U 19 inch rack-mount enclosure with AC power supplies
+
+Figure 12 shows the rear view of IBM FlashSystem 7000 LFF Expansion Enclosure Model 
+12G.
+
+Figure 12   Rear view of IBM FlashSystem 7000 Expansion Enclosure Model 12G
+27
+
+
+
+Figure 13 shows the front view of the IBM FlashSystem 7000 Expansion Enclosure Model 
+24G.
+
+Figure 13   Front view of the IBM FlashSystem 7000 SFF Expansion Enclosure Model 24G
+
+The 24G model of IBM FlashSystem 7000 SFF Expansion Enclosure includes the following 
+features:
+ Two expansion canisters
+ 12 Gbps SAS ports for attachment to the IBM FlashSystem 7300 control enclosures
+ 2U 19 inch rack-mount enclosure with AC power supplies
+
+Figure 14 shows the rear view of IBM FlashSystem 7000 SFF Expansion Enclosure Model 
+24G.
+
+Figure 14   Rear view of IBM FlashSystem 7000 Expansion Enclosure Model 24G
+
+IBM FlashSystem 7000 LFF HD Expansion Enclosure Model 92G delivers the following 
+features:
+ A maximum of 92 drives are top-loaded into drive slots of the expansion enclosure
+ 5U 19 inch rack-mount enclosure with slide rail and cable management assembly
+ Redundant 200–240 V AC power supplies, new C19/C20 PDU power cord required
+28 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Figure 15 shows the front view of IBM FlashSystem 7000 LFF HD Model 92G Expansion 
+Enclosure.
+
+Figure 15   Front view of IBM FlashSystem 7000 LFF Model 92G Expansion Enclosure
+
+Figure 16 shows the rear view of IBM FlashSystem 7000 LFF model 92G Expansion 
+Enclosure. 
+
+Fan 1 & 2 Power connectors
+PSU 1 & 2 Fan 3 & 4
+
+Canister 1 & 2
+
+Figure 16   Rear view of IBM FlashSystem 7000 LFF model 92G Expansion Enclosure
+29
+
+
+
+Scalability and performance
+
+The IBM FlashSystem 7300 system includes the following scalability and performance 
+features:
+ A maximum of 829.44 TB usable and 1.75 PB effective flash capacity in only 2U with 3:1 
+
+compression without Expansions.
+ A maximum of 3.3 PB usable and 10.69 PB maximum flash capacity in only 8U with 5:1 
+
+compression without Expansions.
+ Extra scalability through expansion enclosures models 12G, 24G, and 92G, and increased 
+
+raw capacity to a maximum of 32 PB.
+ IBM FlashSystem 7300 can deliver a maximum of 2.3 million IOPS, with latency down to 
+
+70 microseconds (µs) and a maximum bandwidth of 35 GBps from a single system.
+ A clustered FlashSystem 7300 can scale linearly and delivers 9.2 million IOPS and 
+
+140 GBps on a fully configured 4x IBM FlashSystem 7300 cluster.
+
+Note: Performance and available bandwidth depend on the workload. Use the IBM 
+Storage Modeler (STORM) to retrieve the performance and bandwidth data for your 
+system. For more information, see STORM - Storage Memory Objects Report.
+
+Advanced functions
+The IBM FlashSystem 7300 system provides the following advanced functions:
+ HyperSwap for IBM FlashSystem 7300
+ Safeguarded copy
+ IBM FlashSystem Cyber Vault
+ Increased security features
+ NVMe over Fabrics
+ Portsets
+ IP quorum base support
+ Data reduction tools
+ N-Port ID virtualization support
+ VMware integration
+ External virtualization
+
+HyperSwap for IBM FlashSystem 7300 
+
+HyperSwap for IBM FlashSystem 7300 is available with IBM Storage Virtualize Software 
+V8.5.0 and later. You can use HyperSwap to present each volume to two I/O groups. The 
+configuration tolerates combinations of node and site failures by using the same flexible 
+choices of host multipathing driver interoperability as are available for the IBM FlashSystem 
+7300 system. The use of FlashCopy helps maintain a golden image during automatic 
+resynchronization.
+
+Important: Because remote mirroring is used to support the HyperSwap capability, remote 
+mirroring licensing is required for HyperSwap. For more information, see “Software and 
+licensing” on page 57.
+30 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+IBM Storage Virtualize software V8.5.0 or later includes remote mirroring of control 
+enclosures and expansion enclosures. IBM Storage Virtualize is used to provide functions for 
+externally virtualized storage. 
+
+The HyperSwap function uses a HyperSwap topology to spread the nodes of the system 
+across two sites, with storage at a third site that acts as a tie-breaking quorum device. 
+
+Consider the following points:
+ The HyperSwap topology locates both nodes of an I/O group in the same site. Therefore, 
+
+to get a volume that is resiliently stored on both sites, at least two I/O groups are required.
+ The HyperSwap topology uses extra system resources to support a fully independent 
+
+cache on each site. This configuration provides full performance, even if one site is lost. In 
+some environments, a HyperSwap topology provides better performance than a stretched 
+topology.
+
+ The HyperSwap function can now be configured through a new CLI that can greatly 
+simplify the setup process to a handful of commands. The HyperSwap function also adds 
+the ability to configure and manage local HyperSwap through the GUI for simpler 
+configuration and operation.
+
+ Hosts, IBM FlashSystem 7300 control enclosures, and IBM FlashSystem 7000 expansion 
+enclosures are in one of two failure domains or sites.
+
+ Volumes are visible as a single object across both sites (I/O groups).
+
+Figure 17 shows how the HyperSwap function works.
+
+Figure 17   HyperSwap function
+31
+
+
+
+Each primary volume (“p” in Figure 17 on page 31) has a secondary volume (“s” in Figure 17 
+on page 31) on the opposite I/O group. The secondary volumes are not mapped to the hosts. 
+The dual-write to the secondary volumes is handled by the IBM FlashSystem 7300 
+HyperSwap function, and is transparent to the hosts.
+
+HyperSwap features the following characteristics:
+ The HyperSwap function is available on IBM Storage Virtualize software V8.5.0 and later, 
+
+and with two or more I/O groups.
+ You can design a multiple-step CLI-based configuration on a single system by performing 
+
+simple object creation through the GUI and CLI.
+ Data is stored on two sites in parallel.
+ The maximum distance between sites is 300 km (186.4 miles). The limiting factor is the 
+
+roundtrip time of 80 ms.
+ Two independent copies of data are maintained (four if you use extra volume mirroring to 
+
+two pools in each site).
+ HyperSwap uses a standard host multipathing driver.
+ Cache data is retained if only one site is online.
+ Automatically synchronizes and resynchronizes copies.
+ Automatic host-to-storage-system path optimization, based on the host site (requires 
+
+Asymmetric Logical Unit Access (ALUA) and Target Port Groups Support (TPGS) support 
+from the multipathing driver).
+
+ Consistent state data is retained during resynchronization for DR.
+ The maximum number of highly available volumes is 2000.
+ Requires a remote mirroring license for volumes. Exact license requirements can vary 
+
+by product.
+
+Safeguarded Copy
+
+IBM Safeguarded Copy regularly creates isolated, separated from server, immutable 
+snapshots of data to help protect against cyberattacks, malware, acts of disgruntled 
+employees, and other data corruption. Because Safeguarded Copy snapshots are on the 
+same FlashSystem storage as operational data, recovery is faster than restoring from copies 
+stored separately.
+
+The system integrates with IBM Copy Services Manager to provide automated backup copies 
+and data recovery.
+
+The Safeguarded child-pool capability on the IBM Storage Virtualize family of products was 
+introduced in an earlier version. The IBM Storage Virtualize family of products includes 
+IBM FlashSystem products, IBM SAN Volume Controller, and IBM Storage Virtualize for 
+Public Cloud
+
+HA configurations mitigate against physical component failure and provide small Recovery 
+Point Objective (RPO) and Recover Time Objective (RTO). Continuous protection and 
+operation occur if a component fails. IBM Storage Virtualize HA configurations, such as 
+HyperSwap and Stretch Cluster, provide such protection.
+
+DR is designed to have a slightly higher RPO and RTO. Therefore, DR is in a position to 
+provide an airgap to protect against corruption to the data that is replicated immediately in an 
+IBM Storage Virtualize HA configuration, such as HyperSwap or Stretch Cluster. 
+32 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+However, because DR solutions at the storage layer are replicating only data, any logical 
+corruption eventually is replicated to the DR site as well.
+
+One way to provide adequate protection against logical data corruption is to take periodic 
+snapshots of the data and to have that data stored in a nonmodifiable state that is 
+inaccessible to administrators, servers, and applications. These Safeguarded copies can then 
+serve as recovery points from which the data can be restored to a pre-corruption state. The 
+corruption can be the result of an errant batch job, a disgruntled employee, or a ransomware 
+attack.
+
+For more information about Safeguarded Copy, see IBM FlashSystem Safeguarded Copy 
+Implementation Guide, REDP-5654.
+
+IBM FlashSystem Cyber Vault
+
+The IBM FlashSystem Cyber Vault solution complements IBM Safeguarded Copy. 
+IBM FlashSystem Cyber Vault automatically scans the copies that are created regularly by 
+Safeguarded Copy, looking for signs of data corruption that are introduced by malware or 
+ransomware. This scan serves two purposes:
+1. It can help identify a classic ransomware attack rapidly after an attack begins.
+2. It is designed to help identify which data copies were unaffected by an attack. 
+
+Armed with this information, customers are positioned to more quickly identify that an attack 
+is underway and more rapidly identify and recover a clean copy of their data.
+
+IBM FlashSystem Cyber Vault features the following highlights:
+ Detect cyberattacks early to minimize damage
+ Speed recovery from an attack
+ Reduce recovery time from days or weeks to just hours
+ Enable forensic analysis of attack
+
+The IBM FlashSystem Cyber Vault solution is a blueprint that is implemented by IBM Lab 
+Services or IBM Business Partners that is designed to help speed cyberattack detection and 
+recovery.
+
+For more information about IBM FlashSystem Cyber Vault, contact your IBM representative or 
+IBM Business Partner.
+
+Increased security features
+
+With IBM Storage Virtualize software V8.5.0 and later, administrators can enable Multifactor 
+Authentication (MFA) to increase security. 
+
+Single-factor authentication methods alone, such as username and password combinations, 
+do not provide the level of protection and security that is required in cloud and hybrid-cloud 
+environments. With multifactor authentication support, security administrators can reinforce 
+account protection, create granular access for users and user groups, and monitor access 
+more efficiently at a system level.
+
+MFA requires users to provide multiple pieces of information when they log in to the system to 
+prove their identity. Multifactor authentication uses any combination of two or more methods, 
+called factors, to authenticate users to your resources and protect those resources from 
+unauthorized access. The system integrates with IBM Security® Verify to provide MFA for 
+system users.
+33
+
+
+
+Also available with IBM Storage Virtualize software V8.5.0 and later is single sign-on (SSO). 
+With SSO, users must provide their credentials only once when they sign in to more systems, 
+rather than repeatedly providing the credentials for every individual system. The system 
+supports Microsoft Active Directory Federation Services (AD FS) to provide single sign-on.
+
+For more information, see IBM Storage Virtualize, IBM FlashSystem, and IBM SAN Volume 
+Controller Security Feature Checklist, REDP-5678.
+
+NVMe over Fabrics 
+
+The NVMe protocol is an open collection of standards and interfaces that fully uses the 
+benefits of nonvolatile memory in all types of computing environments, from mobile to data 
+center. It is designed to deliver high bandwidth and low latency storage access. 
+
+This section describes the NVMe protocol and interface as it relates particularly to 
+flash-based architectures.
+
+The NVMe protocol is an interface specification for communicating with storage devices and it 
+is functionally the same as other protocols, such as SATA and SAS. However, the NVMe 
+interface was designed for fast storage media, such as flash-based SSDs and low-latency 
+nonvolatile storage technologies. 
+
+Typically, NVMe storage devices are directly attached to a host system over a PCIe bus, and 
+the NVMe controller is contained in the storage device. This architecture eliminates the need 
+for another I/O controller between the CPU and the storage device and results in reduced 
+latency, throughput scalability, and simpler system designs.
+
+This design was implemented in the IBM FlashSystem 7300, with its dual-ported PCIe-based 
+NVMe drives. 
+
+However, the PCIe bus has a limit to the number of NVMe drives that can be attached to a 
+host over the bus to a few tens of devices. Also, because the maximum length of PCIe cabling 
+is a few meters, the flexibility of deploying PCIe NVMe drives outside the host server is limited 
+and data center level scalability is not feasible. 
+
+NVMe over Fabrics (NVMe-oF) overcomes the limitations of the SCSI protocol and the limited 
+number of concurrent queues by extending the benefits of low latency and high efficiency of 
+the NVMe technology across network fabrics. This feature supports sharing of NVMe storage 
+at a large scale of 100s or 1000s of devices and over distance. 
+
+Figure 18 on page 35 shows that the NVMe architecture supports many different network 
+fabric technologies.
+
+The NVMe transport layer can be mapped to different network fabric technologies. 
+
+As of this writing, the NVMe transport layer supports the NVMe over Fabrics by using Fibre 
+Channel (referred to as FC-NVMe of NVMeFC) main fabric transport.
+
+FC-NVMe uses FCP as its transport mechanism, which is similar to RDMA, because it places 
+the data transfer in control of the target and transfers data direct from host memory. In 
+addition, FC-NVMe allows for a host to send commands and data together (first burst), which 
+eliminates the first data read by the target and provides better performance at distances. 
+34 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Figure 18   NVMe technology support options 
+
+The NVMe over Fabrics interface uses the same model of submission and completion queues 
+as PCIe NVMe. It maintains the same asynchronous submission and completion model and 
+achieves similar benefits in terms of latency, efficiency, and scalability as the NVMe 
+technology because of the shortened code paths and lockless concurrency in multi-core 
+environments. 
+
+IBM FlashSystem 7300 supports NVMe protocols by way of the various PCIe adapters that 
+can be ordered and installed in the control enclosure. For more information about these 
+options, see “Host I/O connectivity and expansion enclosure adapters” on page 49.
+
+For more information about NVMeoF protocols and architecture, see IBM Storage and the 
+NVM Express Revolution, REDP-5437.
+
+Portsets
+
+IBM FlashSystem 7300 is designed for multi-tenancy where multiple clients can share 
+storage resources. In multitenancy environments, it might be a requirement that clients use 
+storage ports that are connected to different networks to isolate traffic from other clients.
+
+Portsets are groupings of logical addresses that are associated with the specific traffic types. 
+The system supports IP portsets for host attachment, back-end storage connectivity, and IP 
+replication traffic. In addition, FC portsets can be configured for host attachment.
+
+After you create portsets and assign IP addresses, you can assign hosts, host clusters, and 
+IP partnerships to the portset for those traffic types. 
+35
+
+
+
+IP quorum base support
+
+For reduced implementation and operation costs for a HA solution, you can use IP quorum 
+base support to use lower-cost IP network-attached hosts as a quorum disk. Up to 5 
+instances are supported. HyperSwap implementations require FC storage on a third site to 
+cope with tie-breaker situations if the intersite link fails, and when connectivity between sites 1 
+and 2 is lost. In a HyperSwap setup, a quorum disk at the third site is needed. The quorum 
+disk on the third site must be the active quorum disk. Only the active quorum disk acts as a tie 
+breaker.
+
+A quorum device is also used to store a backup copy of important system configuration data. 
+Just over 256 MB is reserved for this purpose on each quorum device.
+
+A system can have only one active quorum device that is used for a tie-break situation. 
+However, the system uses up to three quorum devices to record a backup of system 
+configuration data to be used if a disaster occurs. The system automatically selects one 
+quorum device to be the active quorum device.
+
+For more information about configuring quorum disks within two or three sites, see 
+Configuring quorum.
+
+Note: Fibre Channel over IP (FCIP) connectivity is not supported between nodes when a 
+HyperSwap system is configured without the use of inter-switch links (ISLs).
+
+Data reduction tools
+
+Compression and de-duplication are a key part of the IBM FlashSystem 7300 system. 
+IBM Comprestimator and Data Reduction Estimator Tool is the key sizing tool that is used to 
+estimate how much capacity savings that a client can expect. IBM Comprestimator and Data 
+Reduction Estimator Tool can recognize the patterns of the client data and estimate the 
+compressibility of data per volume. 
+
+IBM FlashSystem models are supported by the IBM Comprestimator, which is available as a 
+stand-alone tool and found in the IBM FlashSystem 7300 GUI. IBM FlashSystem models also 
+support the stand-alone Data Reduction Estimator Tool (DRET). The DRET is a host-based 
+application that is used to estimate the amount of compression and de-duplication on the IBM 
+FlashSystem 7300 system for specific workloads.
+
+Choose your data reduction approach and use the tools to estimate the amount of usable 
+storage that is required by reviewing the following tools.
+
+Figure 19 on page 37 shows how to start the Estimate Compression Saving option from the 
+GUI. 
+
+From the main menu, click Volumes → Volumes and select one volume. Then, right-click to 
+open the menu and select Capacity Savings → Estimate Compression Saving.
+36 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Figure 19   Estimate Compression Saving from the GUI
+
+The following methods can be used to estimate compression and savings on FCM and DRP 
+approaches:
+ IBM FCM - IBM FCM Compression:
+
+– Use the FCM option. 
+– Do not use the Estimate Compression Saving option in the GUI to calculate the 
+
+IBM FCM savings.
+ DRP compression:
+
+– Use the DRP option.
+– Workloads that are on any IBM Storage Virtualize platform can use the Estimate 
+
+Compression Saving option in the GUI.
+ DRP compression and deduplication:
+
+– IBM Comprestimator and Data Reduction Estimator Tool shows the savings for 
+thin-provisioning, compression, and deduplication.
+
+– IBM Comprestimator and Data Reduction Estimator Tool reads entire volumes to 
+identify de-duplicated data, so it takes longer to run.
+
+For more information about DRP compression and setup, see Introduction and 
+Implementation of Data Reduction Pools and Deduplication, SG24-8430.
+
+N-Port ID virtualization support
+
+IBM Storage Virtualize software offers NPIV support. Use NPIV to virtualize WWPNs, which 
+increases redundancy during firmware updates and scheduled maintenance where WWPNs 
+transparently move to the controller that is not being maintained. As a consequence, 
+FC-attached hosts experience zero path reduction during controller outages.
+
+Important: On the IBM FlashSystem 7300 system NPIV is enabled by default. Therefore, if 
+the customer does not want to use it, they must disable it before configuring FC ports for 
+host communications.
+37
+
+
+
+VMware integration
+
+IBM Storage Virtualize software V8.5.0 and higher includes the following features, which 
+enable tight integration with VMware:
+ vCenter plug-in
+
+Enables monitoring and self-service provisioning of the system from within VMware 
+vCenter.
+
+ vStorage APIs for Array Integration (VAAI) support
+This function supports hardware-accelerated virtual machine (VM) copy and migration and 
+hardware-accelerated VM initiation, and accelerates VMware Virtual Machine File System 
+(VMFS).
+
+ Microsoft Windows System Resource Manager (SRM) for VMware Site Recovery 
+Manager
+Supports automated storage and host failover, failover testing, and failback.
+
+ VVOL integration for better usability
+The migration of space-efficient volumes between storage containers maintains the space 
+efficiency of volumes. Cloning a VM achieves a full independent set of VVOLs. Resiliency 
+is also improved for VMs if volumes start running out of space.
+
+Before the availability of VVOLs, a VM in a VMware environment was presented as a VMware 
+disk that was called a VMware Virtual Machine Disk (VMDK). The VMDK file represented a 
+physical disk to the VM. The operating system that is installed on the VM accessed the 
+VMDK. 
+
+The VMDK file was placed in a file system that is called VMFS, which is hosted by a standard 
+volume (LUN). For example, it can be implemented on an external storage system, such as 
+the IBM FlashSystem 7300 system. With the availability of the VVOL technology, each VM 
+disk can now be mapped to an external storage volume, such as an IBM FlashSystem 7300 
+volume.
+
+With VVOL, the IBM FlashSystem 7300 solution recognizes individual VMDK files. Therefore, 
+data operations, such as snapshot and replication, can be performed directly by the 
+IBM FlashSystem 7300 system at the VMDK level rather than the entire VMFS data store.
+
+Note: The integration of VVOL with the IBM FlashSystem 7300 system is based on the 
+VMware APIs for Storage Awareness (VASA). IBM support for VASA is delivered as part of 
+IBM Spectrum® Connect. VASA V2 is required to use the VVOL capability.
+
+For more information about VMware integration, see IBM FlashSystem and VMware 
+Implementation and Best Practices Guide.
+
+External virtualization
+The IBM FlashSystem 7300 system offers external virtualization technology that helps you 
+manage other IBM or third-party storage arrays with thin-provisioning, space-efficient copies, 
+and DR tools, such as Data Replication. External virtualization also makes the migration of 
+data from one storage device to another easier.
+
+You can use the IBM FlashSystem 7300 system to manage the capacity of other disk systems 
+with external storage virtualization. When the IBM FlashSystem 7300 system virtualizes a 
+38 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+storage system, its capacity becomes part of the IBM FlashSystem 7300 system and is 
+managed in the same manner as the capacity on internal flash modules within the 
+IBM FlashSystem 7300 system. Capacity in external storage systems inherits all the rich 
+functions and ease of use of the IBM FlashSystem 7300 system.
+
+You can use the IBM FlashSystem 7300 to preserve your investments in storage, centralize 
+management, and make storage migrations easier with storage virtualization and Easy Tier. 
+IBM FlashSystem 7300 system provides nondisruptive operations because of storage 
+virtualization. Virtualization helps insulate applications from changes that are made to the 
+physical storage infrastructure. For example, when you add storage capacity or a new tier of 
+storage, the changes are transparent to applications, which results in minimal downtime.
+
+Any externally virtualized storage needs extra licenses to be purchased and are charged on a 
+capacity basis of the storage added. 
+
+Scaling up and scaling out
+The IBM FlashSystem 7300 system has a scalable architecture that enables flash capacity to 
+be added, or scaled up, to support multiple applications by adding expansion enclosures. 
+Scale out expands NVMe capacity, with the processing power to use that capacity to linearly 
+scale IOPS and bandwidth. As a result, your organization can gain a competitive advantage 
+through a more flexible, responsive, and efficient storage environment.
+
+The IBM FlashSystem 7300 system has the following flexible scalability configuration options:
+ Base configuration
+ Scale up: Add capacity
+ Scale out: Add control enclosures and capacity
+
+Each IBM FlashSystem 7300 has two canisters, which are also called nodes or controllers. 
+Each canister contains the CPUs, cache memory, PCIe adapters, and other hardware to 
+communicate to the NVMe drives and connected hosts. These canisters are housed in a 
+chassis that is known as a control enclosure. 
+
+It is possible to connect up to a maximum of four control enclosures to form a cluster.
+
+Table 3 lists the values of the CPUs, cache memory, raw NVMe drive size, and PCIe adapters 
+for each number of control enclosures. 
+
+Table 3   Maximum values for each canister and control enclosure n
+
+Element Number of Maximum Maximum NVMe 24 Inclusive Maximum PCIe 
+CPUs cache memory drive capacity raw onboard ports (FC or 
+
+(GiB) (TiB) Ethernet ports Ethernet)
+
+One Canister 2 768 N/A 4 12
+
+One Enclosure 4 1536 922 8 24
+
+Two Enclosures 8 3072 1844 16 48
+
+Three Enclosures 12 4608 2766 24 72
+
+Four Enclosures 16 6144 3688 32 96
+39
+
+
+
+A basic configuration of an IBM FlashSystem 7300 storage platform consists of one 
+IBM FlashSystem 7300 control enclosure. For a balanced increase of performance and scale, 
+up to four IBM FlashSystem 7300 control enclosures can be clustered into a single storage 
+system, which multiplies performance and capacity with each addition.
+
+The clustered IBM FlashSystem 7300 system can include dedicated internal FC switches for 
+internal communications. However, other methods are available to configure the switches and 
+ports to provide performance improvements. 
+
+For more information about how to restrict the FC ports for control enclosure inter-node 
+connections and host connections, see SAN configuration and zoning rules summary.
+
+With the scalable IBM FlashSystem 7300 configurations, you can add up to three 
+IBM FlashSystem 7300 control enclosures to the storage system.
+
+A single IBM FlashSystem 7300 enclosure can provide up to 829 TiB in usable 
+capacity when using all recommended settings (DRAID6 and a 10+P+Q stripe layout). 
+These default settings are used when an array is defined by using the GUI wizard.
+
+The following RAID types are available on the IBM FlashSystem 7300:
+ DRAID 1
+ DRAID 5 (RPQ only)
+ DRAID 6
+
+All RAID types are now DRAID, which was developed to support larger arrays and especially 
+arrays of larger drive modules. The technology can significantly shorten the rebuild time by 
+distributing data, parity, and spare capacity over all member drives of an array. By using 
+DRAID arrays, you can dynamically expand an array with newly added drives to the system.
+
+IBM FCMs provide hardware compression at no extra cost. It is integrated into the drive 
+module and is always enabled. The compression effectiveness depends on the type and 
+structure of user data. Overall, IBM expects a compression ratio up to 3:1, which achieves an 
+effective capacity in a single enclosure of 1382 TiB.
+
+When incorporating DRPs with deduplication and compression, potentially an even higher 
+data reduction ration of a maximum of 5:1 is achievable, depending on the data structure.
+
+The IBM FlashSystem 7300 system is expandable to 32 PB by using SSDs and HDDs in 
+expansion enclosures as tiered capacity. More FlashSystem expansion enclosures are 
+attached through the optional SAS Expansion Enclosure Attach card (FC# ADBA). 
+
+Maximum capacity configurations
+
+Table 4 lists the maximum usable capacity, and maximum effective capacity for scalable 
+configurations that are built on the IBM FlashSystem 7300 control enclosures.
+
+Table 4   IBM FlashSystem 7300 maximum usable and effective capacity.
+
+Number of Maximum usable capacity Maximum effective Maximum effective 
+control enclosures by using DRAID6 with 24 capacity (TiB) with inline capacity (TiB) with 
+
+drives (TiB) FCM Drive compression software data reduction 
+3:1 ratio 5:1 ratio
+
+One 663 1989 3315
+
+Two 1326 3978 6630
+40 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Number of Maximum usable capacity Maximum effective Maximum effective 
+control enclosures by using DRAID6 with 24 capacity (TiB) with inline capacity (TiB) with 
+
+drives (TiB) FCM Drive compression software data reduction 
+3:1 ratio 5:1 ratio
+
+Three 1989 5967 9945
+
+Four 2652 7956 13260
+
+Note: IBM FCM inline compression is hardware-based and operates at line speed, having 
+no effect on the performance.
+
+Capacity expansion by using expansion enclosures
+
+The IBM FlashSystem 7300 system supports the addition of expansion enclosures to extend 
+capacity. 
+
+Note: The IBM Storage Virtualize maximum storage limit is 32 PB.
+
+The list of available drive module options to be installed in expansion enclosures can be found 
+in “IBM FlashSystem 7300 hardware component overview” on page 21.
+
+High-density (HD) Enclosure Model 92G accepts SAS SSDs and HDDs. With these tiering 
+options, you can have four enclosures per control enclosure, with a maximum capacity of 
+998 TB each using 30.72 TB flash drives.
+
+Note: To support SAS-attached expansion enclosures, a SAS Enclosure Attachment 
+adapter, feature code an ADBA, must be installed in the control enclosure of the IBM 
+FlashSystem 7300 system.
+
+Figure 20 shows the maximum enclosure configuration with 92G expansions.
+
+Figure 20   Maximum configuration for model 92G enclosures
+41
+
+
+
+IBM FlashSystem 7000 LFF Expansion Enclosure Model 12G offers new tiering options with 
+HDDs. Each LFF expansion enclosure supports up to 12 3.5-inch HDDs.
+
+IBM FlashSystem 7000 SFF Expansion Enclosure Model 24G offers new tiering options with 
+HDD or SSD flash drives. Each SFF expansion enclosure supports a maximum of 24 2.5-inch 
+flash SSD or HDDs.
+
+A maximum of 12 expansion enclosures are supported per IBM FlashSystem 7300 control 
+enclosure, which supports a maximum of 288 SAS SSD and HDD drives.
+
+Figure 21 shows the maximum configuration of 20 expansion enclosures in the 12G or 24G 
+models.
+
+Figure 21   Maximum configuration for model 12 G / 24 G enclosures
+
+RAID types
+
+The IBM FlashSystem 7300 system supports DRAD 1 and DRAID 6. Traditional RAID is not 
+supported.
+
+The following rules apply for DRAID building:
+ DRAID 6 is used for all drive types: 
+
+– SCM Class drives
+– FCMs
+– Industry-standard flash drives
+
+ DRAID 1 is used if in any drive class 6 or fewer drives are present.
+ All drives in a single array must be of the same type, technology, and size.
+ Only one DRAID array is used per pool.
+
+For more information about the types of supported RAID configurations, see Array 
+Configurations.
+42 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Manageability and security
+The IBM FlashSystem 7300 system offers many improvements on the manageability and 
+security features as compared to previous models. 
+
+In general, the manageability and security of the range of systems. The changes that are 
+implemented in version 8.6 code on these systems include the following examples:
+ Safeguarded copy is a technology that is derived from the technology that is used in the 
+
+IBM DS8000® line. It consists of a copy that cannot be changed or deleted after it is 
+created. Also, storing sensitive copies in immutable storage, cloud environments, or offline 
+write-once read many (WORM) tape devices is an option to provide physical air-gap 
+protection.
+
+ Advanced security for data at rest with hardware-accelerated AES-XTS 256 encryption.
+ IBM has applied for FIPS 140-3 Level 1 certification for IBM FCMs generation 4 in the 
+
+IBM FlashSystem 7300. At the time of writing, the application is on the NIST 
+modules-in-progress list. 
+
+ A GUI and a CLI are available to manage the IBM FlashSystem 7300 control enclosures 
+and the IBM FlashSystem 7000 expansion enclosures: 
+– The GUI is supported in any supported browser. 
+– The IBM FlashSystem 7300 CLI supports a collection of commands that you can use 
+
+to manage the IBM FlashSystem 7300 system. 
+– In the 7300 system, the GUI and the command-line support MFA for increased security.
+
+ The IBM FlashSystem 7300 system running IBM Storage Virtualize 8.6.0 software 
+supports the Representational State Transfer (REST) model API. The REST API consists 
+of command targets that are used to retrieve system information and to create, modify, 
+and delete system resources. 
+
+ Secure Remote Access (SRA) provides a secure connection for IBM Remote Support, 
+which can perform remote troubleshooting and code load, and obtain diagnostic logs.
+
+ Email and SNMP alerts are part of the standard alerting options.
+ Syslog redirect to send system log messages to another host.
+ Combined password and SSH key authentication is now supported as a first factor for 
+
+local users.
+ By using role-based access control, methods of access to the system are restricted at a 
+
+user group level. GUI, CLI, and REST API access can now be restricted.
+ The log-in grace time and session timeout duration can now be configured according to 
+
+the customer’s policies.
+ The following MFA options can be used:
+
+– Cloud-based IBM Security Verify Integration supports a wide range of secondary 
+authentication factors because it uses an industry-standard protocol, OpenID Connect. 
+It also aligns with other products that support this solution, such as IBM Storage Scale.
+
+– Single sign-on support by using Microsoft’s Active Directory Federation Services can 
+be used on-premises to support access cards and dark sites.
+43
+
+
+
+ Cyber Vault solution
+IBM Cyber Vault is a combination of hardware and software to provide a comprehensive 
+approach to cyber resiliency and includes the following features: 
+– Immutable copies of data can be created by IBM Safeguarded Copies, 
+– Pro-active monitoring by using IBM Storage Insights, a recommended service from 
+
+IBM, can provide early warnings of a possible attack. Integration with IBM’s QRadar® 
+is also recommended.
+
+– Rapid Recovery
+The monitoring of the Cyber Vault snapshots that are created by Safeguarded copies is 
+a continuous process. Monitoring is done by using standard database tools and other 
+software. In this way, Cyber Vault checks Safeguarded Copy snapshots for corruption. 
+If any corruption is found, it is considered a sign of a possible attack.
+
+– Data Copy Test and Validation
+Data copies are in an isolated environment to verify they are uncorrupted and to 
+ensure recovery procedures are in place. Also, forensics and diagnostics services are 
+available to check the validity of the data copies. 
+
+All of these features can be implemented by IBM Lab services or an IBM Business Partner 
+by using the IBM Frameworks for IT Cyber Resiliency. However, more software such as 
+IBM QRadar and IBM Security Guardium® Data Protection, might be required.
+
+ An interactive management GUI is included with excellent management and monitoring 
+features.
+
+ For native scheduler for snapshots, external software is no longer required to create and 
+manage crash-consistent copies of data. You can schedule taking snapshots.
+For application-consistent copies, an external, third-party orchestrator with application 
+awareness is still needed.
+
+Encryption
+
+Like its predecessors, IBM FlashSystem 7300 data encryption is based on the industry 
+standard AES-XTS 256 encryption, as defined in the IEEE 1619-2007 standard and NIST 
+Special Publication 800-38E as XTS-AES-256. 
+
+The data encryption key is protected by a 256-bit AES key wrap of a key that is derived from 
+the access key that is stored on the USB flash drive. The wrapped key is stored in the system 
+in nonvolatile form. 
+
+Encryption on the IBM FlashSystem 7300 system requires the following feature codes:
+ Encryption Enablement (#ACE8)
+
+This feature enables the encryption function. A single instance of this feature enables the 
+function on the entire IBM FlashSystem 7300 system, also known as a cluster, which 
+includes the IBM FlashSystem 7300 control enclosure and all attached IBM FlashSystem 
+7300 expansion enclosures, and on externally virtualized storage subsystems.
+
+ USB flash drives (#ACEA) 
+IBM Security Guardium Key Lifecycle Manager or Gemalto Safenet Keysecure are 
+required for encryption key management.
+44 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+ Encryption USB Flash Drives (Four Pack) Optional (#ACEA)
+This feature provides four USB flash drives for storing the encryption master access key.
+Unless IBM Security Guardium Key Lifecycle Manager or Gemalto Safenet Keysecure is 
+used for encryption keys management, a total of three USB flash drives are required per 
+IBM FlashSystem 7300 cluster when encryption is enabled in the cluster, regardless of the 
+number of systems in the cluster. If encryption is used in a cluster, this feature should be 
+ordered on one IBM FlashSystem 7300 system, which results in a shipment of four USB 
+flash drives. 
+
+ Encryption using key servers
+A key server is a centralized system that generates, stores, and sends encryption keys to 
+the system. Some key server providers support replication of keys among multiple key 
+servers. If multiple key servers are supported, you can specify up to four key servers that 
+connect to the system over both a public network or a separate private network. The 
+system supports IBM Security Guardium Key Lifecycle Manager, Thales CipherTrust 
+Manager, or Gemalto SafeNet Key Secure key servers to handle key management on the 
+system. These supported key server management applications create and manage 
+cryptographic keys for the system and provide access to these keys through a certificate. 
+Only one type of key server management application can be enabled on the system at a 
+time. Authentication takes place when certificates are exchanged between the system and 
+the key server. Certificates must be managed closely because expired certificates can 
+cause system outages. Key servers must be installed and configured before they are 
+defined on the system. 
+IBM Security Guardium Key Lifecycle Manager key servers support Key Management 
+Interoperability Protocol (KMIP), which is a standard for encryption of stored data and 
+management of cryptographic keys. For more information, see Encryption.
+
+Encryption can be applied to virtualized storage arrays, even if the virtualized array does not 
+include encryption capabilities. In this scenario, the encryption is done by using IBM Storage 
+Virtualize software. Encrypted volumes do not affect applications, which eases 
+implementation and operation. 
+
+In addition, the IBM FlashSystem 7300 system features the following functions, which require 
+that you purchase Encryption Enablement Pack #ACE9:
+ Encryption Activation
+
+Adding an encryption license to a system is not concurrent and must be done at array 
+initialization time. 
+
+ Encryption Deactivation
+Removing encryption is not concurrent and destroys any data that is on the array.
+
+ Encryption Rekey
+Changing the encryption key on a previously initialized system is concurrent and can be 
+done while the array is in use.
+45
+
+
+
+Self-encrypting drives
+The IBM FCMs and NVMe drives, including the SCMs, in the IBM FlashSystem 7300 control 
+enclosure are self-encrypting drives (SEDs). With SEDs, you can encrypt the data on the 
+drive within the hardware. 
+
+These types of flash drives include the following features:
+ Encryption of data is done in the electrical circuit of the drive. Therefore, it is not affected 
+
+by performance issues from software encryption.
+ Data encryption keys never leave the confines of the SED, and are never loaded into CPU 
+
+or memory.
+ You can perform a fast cryptographic erasure of an SED by using a single CLI command to 
+
+replace the data encryption key or revert the entire device to factory settings.
+ Supports a security feature that is called auto-lock, which protects against someone 
+
+inserting your drive into another system and accessing your data.
+ Drives automatically lock themselves on power loss and require an access key at start 
+
+time to unlock and allow I/O operations.
+ If an SED is taken from a system with encryption and placed in another system, the drive 
+
+data is not readable. The system posts an error message that indicates that it is locked. 
+The only way to use the drive is to format it. This formatting also performs a cryptographic 
+erase by removing any encryption keys; therefore, all of the data on the drive is destroyed. 
+
+Combining system encryption with self-encrypting drives
+
+Important: You can use SEDs without enabling encryption on the system, but, unless they 
+are configured with extra protection, SEDs are unlocked by default at start time. 
+
+With system level encryption in IBM Storage Virtualize you can use USB flash drives or 
+IBM Security Guardium Key Lifecycle Manager to manage access to encrypted objects on the 
+system. This feature ensures that when a system is powered, this extra encryption key is 
+required to read the data on the drives.
+
+Consider the following points:
+ SEDs are always encrypting, and you cannot stop them from being encrypted.
+ You can use SEDs without enabling encryption on the system; however, SEDs are 
+
+unlocked by default unless they are configured with extra protection.
+ With system encryption in IBM Storage Virtualize, you can use USB flash drives or 
+
+IBM Security Guardium Key Lifecycle Manager to manage access to encrypted objects on 
+the system.
+
+ Software in the operating system is required to manage an access key that can be used to 
+lock and unlock the SEDs and bring them online for I/O.
+
+Therefore, the best solution is to use the SEDs with the Encryption Enablement Pack and 
+USB or IBM Security Guardium Key Lifecycle Manager encryption, or a mixture of both. This 
+configuration ensures the maximum level of encrypting for your data that is on the system.
+46 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Transparent Cloud Tiering and encryption
+TCT is a licensed function that enables volume data to be copied and transferred to cloud 
+storage. The system supports creating connections to cloud service providers to store copies 
+of volume data in private or public cloud storage.
+
+With TCT, administrators can move older data to cloud storage to increase available capacity 
+on the system. Point-in-time snapshots of data can be created on the system and then copied 
+and stored on cloud storage. 
+
+An external cloud service provider manages the cloud storage, which reduces storage costs 
+for the system. At the time of this writing, IBM supports the OpenStack Swift and Amazon S3 
+cloud service providers.
+
+The following considerations apply to TCT and encryption:
+ When a cloud account is created, it must continue to use the same encryption type 
+
+throughout the life of the data in that cloud account. Even if the cloud account object is 
+removed and remade on the system, the encryption type for that cloud account might not 
+be changed while back up data for that system exists in the cloud provider.
+
+ When performing rekeying operations on a system that has an encryption-enabled cloud 
+account, perform the commit operation immediately after the prepare operation. Retain 
+the previous system master key on a USB or in the keyserver because this key might be 
+needed to retrieve your cloud backup data when performing a T4 recovery or an import.
+
+ The restore_uid option is not used when the backup is imported to a new cluster.
+ Importing TCT data is supported from only systems whose backup data was created at 
+
+V7.8.0.1 or later.
+ TCT uses Sig V2 when connecting to Amazon regions, and does not currently support 
+
+regions that require Sig V4.
+
+For more information, see Transparent Cloud Tiering.
+
+Secure drive erasure process
+The IBM FlashSystem 7300 system running IBM Storage Virtualize V8.5.0 or later provides 
+methods to securely erase data from a drive or boot drive when a control enclosure is 
+decommissioned or before a drive is removed from the system during a repair activity.
+
+Secure data deletion erases or overwrites all traces of data from a data storage device. The 
+original data on that device becomes inaccessible and cannot be reconstructed. You can 
+securely delete data on individual drives and on a boot drive of a control enclosure. The 
+methods and commands that are used to securely delete data enable the system to be used 
+in compliance with European Regulation EU2019/424. 
+
+The following types of drives can be used for this process:
+ Expansion enclosure SAS SSDs
+ IBM FCMs and industry-standard NVMe drives 
+ Control enclosure node canister SSD boot drives 
+
+The methods that the system uses to securely delete data from the drives varies according to 
+the CLI commands that each type of drive can support. The completion time for the erase 
+procedure also varies, depending on the amount of data and the method that is used to delete 
+the data. In each case, when the operation completes, the result is that the data on the drive 
+is inaccessible.
+47
+
+
+
+Table 5 lists the types of erasure, methods that are used, and time that is taken to securely 
+delete data from drives. 
+
+Table 5   Comparison of methods to securely delete data from drives 
+
+Priority Deletion type Method Completion time
+
+1 Cryptographic Changes the encryption key and makes the Instant
+erase data inaccessible.
+
+2 Block erase Quickly raises and lowers the voltage level Fast
+of the storage element. Physical blocks are 
+altered with a vendor-specific value.
+
+3 Data Overwrite Replaces data with random data. Slow
+
+The methods that are used to securely delete data vary according to manufacture, drive type, 
+and drive firmware. For more information, see the documentation that is provided by the drive 
+manufacturer.
+
+If a drive supports more than one data deletion method, the system uses the highest-priority 
+method. 
+
+For more information about the CLI commands that are used to run this secure erase 
+function, see Secure data deletion. 
+
+Reliability, availability, and serviceability
+
+IBM FlashSystem 7300 delivers the following enterprise-class reliability features, much like its 
+predecessors:
+ IBM FlashSystem 7300 control enclosures support concurrent code load. Onsite and 
+
+remote code upgrades are supported. However, for onsite code loads, an extra feature 
+#AHY2 must be purchased. For code loads to the FCM drives, you must also purchase 
+#AHY2.
+
+ The components of the IBM FlashSystem 7300 are one of the following configurations:
+– Hot-swappable. All system functions remain the same.
+– Concurrently replaceable. All functions remain, but elements might be offline. 
+
+Performance or availability might be affected.
+The IBM FlashSystem 7300 control enclosure includes two clustered node canisters that 
+contain hot-swappable and concurrently replaceable components:
+– Hot-swappable:
+
+• Secure boot drives
+• Batteries
+• PSUs (2 per canister)
+• NVMe or FCM drives
+
+– Concurrently replaceable:
+• Fan modules
+• Memory DIMMs
+• Trusted Platform Module (TPM)
+• PCIe adapters
+• Node canister
+48 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+If an IBM FCM failure occurs, critical customer applications can remain online while the 
+defective module is replaced because a spare module is available.
+
+ IBM enhanced technology in the SCM drives for higher storage density and improved 
+performance can coexist with FCM3 or FCM4 drives in the IBM FlashSystem 7300 for 
+even more demanding workloads.
+
+ By using 3-site data copies with synchronous and asynchronous data copies, greater 
+flexibility is available in creating DR and HA solutions.
+
+Options and feature codes
+This section describes the options and feature codes of the IBM FlashSystem 7300 control 
+enclosure.
+
+Memory options
+
+Table 6 lists the various memory option feature codes.
+
+Table 6   IBM FlashSystem 7300 memory options per control enclosure
+
+Base memory (GB) #ACGJ Plant or Field #ACGB Plant or Field Total memory (GB)
+Upgrade (GB) Upgrade (GB) 
+
+256 N/A N/A 256
+
+256 512 N/A 768
+
+256 512 768 1536
+
+The following feature codes are available:
+ (#ACGJ) - 512 GB Cache upgrade.
+
+This feature indicates that the base machine is configured with 512 GB (256 GB for each 
+node canister). Selecting this feature determines the cache upgrade paths of the machine.
+
+ (#ACGB) - 768 GB Cache upgrade.
+This feature provides another 768 GB of cache (384 GB for each node canister) to 
+increase the total system cache by 768 GB.
+
+Note: A quantity of one ACGJ must be ordered with this feature if not already fitted.
+
+Mandatory feature: Boot Drive Pair
+
+The #ACGV - 240 GB M.2 Boot drive Pair feature is mandatory and indicates that each 
+canister of the base machine is configured with dual 240 GB M.2 boot drives.
+
+Host I/O connectivity and expansion enclosure adapters
+
+Six PCIe slots are available for port expansions in the IBM FlashSystem 7300 control 
+enclosure. Each canister has three PCIe adapter slots and both canisters must have the 
+same configuration. The PCIe adapter feature codes offer a pair of adapters to ensure that 
+they are supplied symmetrically in each canister.
+49
+
+
+
+The IBM FlashSystem 7300 control enclosure can be configured with three I/O adapter 
+features to provide up to twenty-four 32 Gbps FC ports or up to twelve 10/25 Gbps or twelve 
+100 Gbps Ethernet ports. The control enclosure also includes eight 10 Gbps Ethernet ports 
+as standard for iSCSI connectivity and two 1 Gbps Ethernet ports for system management. A 
+feature code is also available to include the SAS expansion adapter if the user wants to 
+implement the optional expansion enclosures. 
+
+Note: The SAS Expansion adapter does not support SAS hosts.
+
+Figure 22 shows the connectivity options for the different adapters that are available at time of 
+this writing.
+
+Figure 22   Connectivity options
+
+For more information about the limits and rules for adapter placement to ensure correct best 
+practices, see IBM Storage Virtualize FAQ: IBM Storage Virtualize with the IBM FlashSystem 
+family and IBM SAN Volume Controller.
+
+Table 7 lists the maximum host port count per building block configuration (1, 2, 3, or 4 control 
+enclosures.)
+
+Note: All connectivity ports are NVMe-oF hardware-ready.
+
+Table 7   Maximum host port count per control enclosure
+
+Number of control 32 Gbps Onboard 25 Gbps 25 Gbps 100 Gbps 
+enclosures FC 10 Gbps iSCSI (RoCE) iSCSI iSCSI
+
+iSCSi ports (iWARP) (RoCE)
+
+One 24 8 12 12 12
+
+Two 48 16 24 24 24
+
+Three 72 24 36 36 36
+
+Four 96 32 48 48 48
+50 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Table 8 lists the current features for host connectivity for the IBM FlashSystem 7300 control 
+enclosure 4657-924 and 4657-U7D machine types.
+
+Table 8   Supported expansion enclosure and interface components MTMs 4657-924 and 4657-U7D
+
+Item Feature Description Ports
+code
+
+32 Gbps FC 4 Port #ADBE This feature provides two I/O Each adapter has four 32 Gbps FC 
+Adapter (Pair) adapters. It is used to add 32 Gbps ports and shortwave SFP 
+
+FC connectivity. transceivers. 
+
+25 Gbps Ethernet #ADBB This feature provides two I/O Each adapter has two 25 Gbps 
+(RoCE) Adapter (Pair) adapters. It is used to add 25 Gbps Ethernet ports without SFP28 
+
+Ethernet connectivity. Supports transceivers.
+RoCE V2. 
+
+25 Gbps Ethernet #ADBC This feature provides two I/O Each adapter has two 25 Gbps 
+(iWARP) Adapter (Pair) adapters. It is used to add 25 Gbps Ethernet ports without SFP28 
+
+Ethernet connectivity. Supports transceivers.
+RDMA with iWARP. 
+
+100 Gbps Ethernet #ADB8 This feature provides two I/O adapter Each adapter has two 100 Gbps 
+(RoCE) Adapter Cards cards, each with two 100 Gbps Ethernet Ports. Supplied without 
+(Pair) Ethernet ports. It is used to add 100 optics or cables. 
+
+Gbps Ethernet connectivity to the 
+FlashSystem 7300 control enclosure 
+and is designed to support RDMA 
+with RoCE 2.
+
+SAS Expansion #ADBA This feature provides two 4-port Each adapter has two active out of 
+Enclosure Attach Card 12 Gbps SAS expansion enclosure the four SAS ports.
+(Pair) attachment adapters. This feature is 
+
+used to attach up to 12 expansion 
+enclosures.
+
+25 Gbps Ethernet SW #ACHP This feature provides four 25 Gbps Requires feature ADBB, or ADBC.
+SFP28 Transceivers shortwave SFP28 transceivers to 
+(Four) populate a pair of 25/10 Gbps 
+
+Ethernet host interface cards. These 
+transceivers are used to set the card 
+ports to 25 Gbps.
+
+10 Gbps Ethernet SW #ACHQ This feature provides four 10 Gbps Requires feature ADBB or ADBC.
+SFP+ Transceivers shortwave SFP+ transceivers to 
+(Four) populate a pair of 25/10 Gbps 
+
+Ethernet host interface cards. These 
+transceivers are used to set the card 
+ports to 10 Gbps.
+
+32 Gbps FC LW SFP #ACHV This feature provides two 32 Gbps Feature ADBE is a prerequisite. 
+Transceivers (Pair) longwave SFP transceivers for use The maximum allowed is eight for 
+
+with 32 Gbps FC I/O ports. each instance of #ADBE.
+
+100 Gbps Ethernet #ACHX This feature provides four 100 Gbps Requires feature ADB8.
+QSFP28 SR4 Ethernet QSFP28 SR4 transceivers; 
+Transceivers (Four) enough for 1 pair of 100 Gbps 
+
+Ethernet cards.
+
+10 Gbps Ethernet SFP+ #ACJ2 This feature provides four 10Gbe Requires feature ADBB or ADBC.
+RJ45 Transceivers (Four) SFP+ to RJ45 transceivers; enough 
+
+for 1 pair of Gbps Ethernet cards.
+51
+
+
+
+Cables
+The following cables are available:
+ (#ACSQ): 1 m OM3 Fibre Cable (LC)
+ (#ACSR): 5 m OM3 Fibre Cable (LC)
+ (#ACSS): 10 m OM3 Fibre Cable (LC)
+ (#ACST): 25 m OM3 Fibre Cable (LC) 
+ (#ACUA): 0.6 m 12 Gbps SAS Cable (mSAS HD) 
+ (#ACUB): 1.5 m 12 Gbps SAS Cable (mSAS HD) 
+ (#ACUC): 3 m 12 Gbps SAS Cable (mSAS HD) 
+ (#ACUD): 6 m 12 Gbps SAS Cable (mSAS HD) 
+
+IBM Storage Class Memory, FCMs, and industry-standard NVMe drive options
+
+The IBM FlashSystem 7300 system supports SCM drives, IBM FCMs, industry-standard flash 
+drives, and an intermix of all three. 
+
+IBM FCMs combine IBM MicroLatency technology, advanced flash management, and 
+reliability into a 2.5-inch SFF NVMe with built-in, performance-neutral hardware compression 
+and encryption. 
+
+For improved flexibility, IBM FlashSystem 7300 systems also support various 
+industry-standard self-encrypting NVMe flash drives.
+
+The available NVMe flash drive uses the following feature codes:
+ (#ADSA): 4.8 TB NVMe FCM3
+ (#ADSB): 9.6 TB NVMe FCM3
+ (#ADSC): 19.2 TB NVMe FCM3
+ (#ADSD): 38.4 TB NVMe FCM3
+ (#ADSE): 4.8 TB NVMe FCM4
+ (#ADSF): 9.6 TB NVMe FCM4
+ (#ADSG): 19.2 TB NVMe FCM4
+ (#ADSH): 38.4 TB NVMe FCM4
+ (#ADT2): 1.92 TB NVMe Flash Drive
+ (#ADT3): 3.84 TB NVMe Flash Drive
+ (#ADT4): 7.68 TB NVMe Flash Drive
+ (#ADT5) 15.36 TB NVMe Flash Drive
+ (#ADT6) 30.72 TB NVMe Flash Drive
+ (#ADTC): 1.6 TB NVMe Storage Class Memory Drive
+
+Consider the following limitations and points about drives on the IBM FlashSystem 7300:
+
+Note: DRAID 5 is supported only by way of RPQ.
+
+ IBM FCMs:
+– DRAID 6 (minimum 6, maximum 128)
+– DRAID 5 (minimum 4, maximum 128) RPQ only
+– DRAID 1 (minimum 2, maximum 16)
+– Only DRAID1 and DRAID6 are supported for compressed drives
+– IBM FCMs in the same RAID array must be of the same capacity
+52 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Important: FCM2 and FCM3 + FCM4 can not work together in the same RAID 
+Array. It you plan to upgrade / expand your FCM2 system you have to create a 
+separate new RAID Array with either FCM3 or FCM4 and upgrade your System onto 
+a supported software level. Note: FCM2 and FCM3 are already withdrawn.
+
+FCM3 and FCM4 can work together in the same RAID Array, but the FCM4 drives 
+will work like FCM3 drives without the enhanced Ransomware Detection features.
+
+If you plan to have all of the new Ransomware Detection functionalities you need 
+ALL drives on FCM4 and minimum IBM Storage Virtualize Code level 8.6.3.
+
+ Industry-standard NVMe drives:
+– DRAID 6 (minimum 6, maximum 128)
+– DRAID 5 (minimum 4, maximum 128) RPQ only
+– DRAID 1 (minimum 2, maximum 16)
+– Industry-standard NVMe drives in the same RAID array must be of the same capacity 
+
+ SCM NVMe drives:
+– Two drive minimum (varies by RAID type), 12 drives maximum
+– DRAID 6 (minimum 6, maximum 12)
+– DRAID 5 (minimum 4, maximum 12) RPQ only
+– DRAID 0 (minimum 2, maximum 12)
+– SCM NVMe drives in the same RAID array must be of the same capacity
+
+IBM FlashSystem 7000 Expansion Enclosure options (Models 12G, 24G, and 
+92G)
+
+The following SAS flash SSD and HDD drive feature codes are available:
+ Supported on Model 12G only (maximum of 12):
+
+– (#AHD4): 6 TB 7.2 K 3.5-inch HDD
+– (#AHD5): 8 TB 7.2 K 3.5-inch NL HDD
+– (#AHD6): 10 TB 7.2 K 3.5-inch NL HDD
+– (#AHD7): 12 TB 7.2 K 3.5-inch NL HDD
+– (#AHD8): 14 TB 7.2 K 3.5-inch NL HDD
+– (#AHD9): 16 TB 7.2 K 3.5-inch NL HDD
+– (#AHDA): 18 TB 7.2 K 3.5-inch NL HDD
+– (#AHDB): 20 TB 7.2 K 3.5-inch NL HDD
+
+ Supported on Model 24G only (maximum of 24):
+– (#AHF3): 1.2 TB 10K 2.5-inch HDD 
+– (#AHF4): 1.8 TB 10K 2.5-inch HDD 
+– (#AHF5): 2.4 TB 10K 2.5-inch HDD 
+– (#AHH9): 800 GB 3DWPD 12 Gbps SAS 2.5-inch Flash Drive
+– (#AHHG): 1.92 TB 12 Gbps SAS 2.5-inch Flash Drive 
+– (#AHHH): 3.84 TB 12 Gbps SAS 2.5-inch Flash Drive 
+– (#AHHJ): 7.68 TB 12 Gbps SAS 2.5-inch Flash Drive 
+– (#AHHK): 15.36 TB 12 Gbps SAS 2.5-inch Flash Drive 
+– (#AHHL): 30.72 TB 12 Gbps SAS 2.5-inch Flash Drive 
+
+ Supported on Model 92G only (maximum of 92):
+– (#AH73): 1.2 TB 10K 3.5-inch HDD 
+– (#AH74): 1.8 TB 10K 3.5-inch HDD 
+53
+
+
+
+– (#AH75): 2.4 TB 10K 3.5-inch HDD 
+– (#AH77): 6 TB 7.2 K 3.5-inch NL HDD 
+– (#AH78): 8 TB 7.2 K 3.5 NL HDD 
+– (#AH79): 10 TB 7.2 K 3.5 NL HDD 
+– (#AH7A): 12 TB 7.2 K 3.5-inch NL HDD 
+– (#AH7B): 14 TB 7.2 K 3.5-inch NL HDD
+– (#AH7C): 16 TB 7.2 K 3.5-inch NL HDD
+– (#AH7J): 1.92 TB 12 Gbps SAS 3.5-inch Flash Drive 
+– (#AH7K) 3.84TB 12 Gbps SAS 3.5-inch Flash Drive 
+– (#AH7L): 7.68 TB 12 Gbps SAS 3.5-inch Flash Drive 
+– (#AH7M): 15.36 TB 12 Gbps SAS 3.5-inch Flash Drive 
+– (#AH7N): 30.72 TB 12 Gbps SAS 3.5-inch Flash Drive 
+– (#AH7X): 18 TB 7.2k 12 Gbps SAS NL 3.5-inch Flash Drive
+
+Note: For more information about Expert Care Features, see Sales Manual Family 
+4657+01 IBM FlashSystem 7300.
+54 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Physical and electrical specifications
+Specifications for the control and expansion enclosures are listed in the following sections. 
+
+IBM FlashSystem 7000 control enclosure (4657-924 and 4657-U7D)
+
+The IBM FlashSystem 7000 control enclosure features the following specifications:
+ Physical:
+
+– Height: 8.8 cm (3.5 in.)
+– Width: 48.3 cm (19.0 in.)
+– Depth: 85.0 cm (33.5 in.)
+– Approximate weight:
+
+• Empty: 38.5 kg (84.7 lb.)
+• Fully configured: 44 kg (97 lb.) without rails
+
+ Air temperature: 
+– Operating: 5–35° C (41–95° F) 0–3048 m (0–10,000 ft.). Above 900 m, decrease 
+
+maximum air temperature 1° per 300 m
+– Nonoperating: 1–50° C (34–122° F)
+
+ Relative humidity:
+– Operating: 8–80% noncondensing
+– Nonoperating: 8–80% noncondensing
+
+ Electrical power:
+– Voltage range: 200–240 V AC
+– Frequency: 50–60 Hz
+– Power: 2000 W (power varies with configuration and system usage; the maximum is 
+
+shown)
+– Heat dissipation (BTU per hour): 6825
+– Acoustical noise emission: 8.1 bels (idling), 8.1 bels (operating)
+
+IBM FlashSystem 7000 LFF and SFF Expansion Enclosure (4657 Model 12G 
+and 4657 Model 24G)
+
+The IBM FlashSystem 7000 Expansion Enclosure 12G/24G features the following 
+specifications:
+ Physical:
+
+– Height: 8.7 cm (3.4 in.)
+– Width: 48.3 cm (19.0 in.)
+– Depth: 55.6 cm (21.9 in.)
+– Approximate weight:
+
+• Empty: 16.7 kg (36.8 lb)
+• Fully configured: 25.0 kg (55.1 lb)
+
+ Air temperature:
+– Operating: 5–35° C (41–95° F) 0–3048 m (0–10,000 ft). Above 900 m, decrease 
+
+maximum air temperature 1° per 175 m
+– Nonoperating: 1–50° C (34–122° F)
+55
+
+
+
+ Relative humidity:
+– Operating: 8–80% noncondensing
+– Nonoperating: 8–80% noncondensing
+
+ Electrical power:
+– Voltage range: 100–240 V AC
+– Frequency: 50–60 Hz
+– Power: 800 W
+– Heat dissipation (BTU per hour): 1,037
+– Acoustical noise emission: 6.2 bels (idling), 6.2 bels (operating)
+
+IBM FlashSystem 7000 High Density LFF Expansion Enclosure (4657 Model 
+92G)
+
+The IBM FlashSystem 7000 High Density Expansion Enclosure 92G has the following 
+specifications:
+ Physical specifications:
+
+– Height: 22.2 cm (8.75 in.)
+– Width: 48.3 cm (19.0 in.)
+– Depth: 96.8 cm (38.1 in.)
+– Approximate weight:
+
+• Empty: 67.0 kg (147.7 lb)
+• Fully configured: 135.0 kg (297.0 lb)
+
+ Air temperature:
+– Operating: 5–35° C (41–95° F) 0–3048 m (0–10,000 ft). Above 900 m, decrease 
+
+maximum air temperature 1° per 300 m
+– Nonoperating: 1–50° C (34–122 degrees F)
+
+ Relative humidity:
+– Operating: 8–80% noncondensing
+– Nonoperating: 8–80% noncondensing
+
+ Electrical power:
+– Voltage range: 180–264 V AC
+– Frequency: 47–63 Hz
+– Power: 2400 W
+– Heat dissipation (BTU per hour): 8,189
+– Acoustical noise emission: 8.5 bels (idling), 8.5 bels (operating)
+
+Note: All noise emission levels that are stated are the declared (upper limit) sound power 
+level in bels, for a random sample of machines. All measurements are made in accordance 
+with ISO 7779 and reported in conformance with ISO 9296.
+56 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Software and licensing
+All IBM FlashSystem 7300 systems feature IBM Storage Virtualize Software V8.5 or later 
+preinstalled. The IBM FlashSystem 7300 is licensed machine code. All features are inclusive 
+except for external virtualization and encryption, which is a feature code that is enabled for 
+those countries that allow it. 
+
+Any connected storage that is not an IBM FlashSystem 7300 control enclosure requires the 
+External Virtualization license per storage capacity unit (SCU) that is based on the tier of 
+storage that is available on the external storage system. In addition, if you use FlashCopy and 
+Remote Mirroring on an external storage system, you must purchase a per-tebibyte license to 
+use these functions.
+
+Consider the following points:
+ IBM FlashSystem 7300 control enclosures support external storage virtualization. The use 
+
+of the external virtualization capability is entitled through the acquisition of IBM Storage 
+Virtualize Software for SAN Volume Controller (PID 5641-VC8 in AAS and PID 5725-M19 
+in IBM Passport Advantage®). 
+
+ With the IBM FlashSystem 7300 system, a license also is needed for the 
+hardware-assisted encryption, Encryption Enablement #ACE8, if it is purchased. This 
+feature code is needed if you want to use USB-Key encryption, Security Key Lifecycle 
+Manager-based encryption, or both on the control enclosure. 
+It is a best practice to use the Encryption USB Drive Pack feature (#ACEA). This feature 
+provides four USB flash drives for storing the encryption master access key. A total of 
+three USB flash drives are required per FlashSystem cluster when encryption is enabled 
+in the cluster, regardless of the number of systems in the cluster. If encryption is to be 
+used in a cluster, this feature is ordered on one FlashSystem, which results in a shipment 
+of four USB flash drives.
+
+ External virtualization licenses from the IBM SAN Volume Controller can be used for the 
+IBM FlashSystem 7300.
+
+ A storage system that is used only as a quorum device does not require a software 
+license.
+
+To set these licenses, use the Licensed Function page in the System Setup wizard. If you are 
+adding these licenses to a system, select Settings → System → Licensed Function in the 
+management GUI. You can also use the chlicense CLI command to update current license 
+settings on the system.
+
+For more information about IBM Storage Virtualize licensing, see Licensed functions.
+
+IBM Storage Virtualize External Licensing
+
+The IBM FlashSystem 7300 supports differential, capacity, and key-based licensing. For 
+example, with external virtualization, differential licensing charges different rates for different 
+types of storage. This paradigm provides cost-effective management of capacity across 
+multiple tiers of storage. Licensing for these functions is based on the number of storage 
+capacity units (SCUs) that are purchased. 
+
+With other functions, such as remote mirroring and FlashCopy, the license grants a specific 
+number of terabytes of capacity for that function. Key-based licenses require an authorization 
+code and key to be downloaded to the system before the function can be used.
+57
+
+
+
+Note: SCUs are needed only for virtualized storage that does not have the 5641-VC8 
+license.
+
+The SCU is defined in terms of the category of the storage capacity, as listed in Table 9.
+
+Table 9   SCU category definitions 
+
+License Drive class SCU ratio
+
+SCM Storage Class Memory (SCM) devices SCU equates to 1.00 TB usable of 
+Category 1 storage
+
+Flash All flash devices, other than SCM SCU equates to 1.18 TB usable of 
+drives Category 1 storage
+
+Enterprise 10 K or 15 K rpm drives SCU equates to 2 TB usable of 
+Category 2 storage
+
+Nearline Nearline Serial ATA (SATA) drives SCU equates to 4.00 TB usable of 
+Category 3 storage
+
+Table 10 shows an example of calculating SCUs. The example is a customer who virtualizes 
+external disk arrays with 5 TB SCM devices, 30 TB SSD flash drives, 400 TB Enterprise 
+drives, and 800 TB Nearline capacity.
+
+Table 10   Example of calculating SCUs
+
+Category Type Capacity Rule Number of SCUs
+
+Category 1 SCM 5 / 1 5
+
+Category 1 SSD 30 / 1.18 26
+
+Category 2 Enterprise 400 / 2 200
+
+Category 3 Nearline 800 / 4 200
+
+Total 1235 431
+
+As shown in Table 10, 431SCUs are required for the example. When you calculate the 
+number of SCUs per category, fractions must be rounded up to the next higher integer 
+number.
+
+For more information about IBM Storage Virtualize Differential Licensing, see Licensed 
+functions and search for “7X00 licensed functions”.
+
+IBM Global Financing
+IBM Global Financing offers competitive financing to credit-qualified customers and 
+IBM Business Partners to assist them in acquiring IT solutions. The offerings include 
+financing for IT acquisition and includes hardware, software, and services from IBM and other 
+manufacturers or vendors. Also included is commercial financing for IBM Business Partners, 
+such as revolving lines of credit, term loans, acquisition facilities, and inventory financing 
+credit lines. 
+58 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Offerings for small, medium, and large enterprise customer segments, rates, terms, and 
+availability can vary by country. For more information, contact your local IBM Global Financing 
+organization or see the IBM Global Financing website.
+
+Ordering information
+For more information about ordering IBM FlashSystem 7300 expansions, see “Scaling up and 
+scaling out” on page 39.
+
+For more information about ordering hardware features, see “IBM FlashSystem 7300 GUI” on 
+page 19.
+
+For more information about ordering software licenses, see “Software and licensing” on 
+page 57.
+
+Related information
+For more information, see the following resources:
+ Implementation Guide for IBM Storage FlashSystem and IBM SAN Volume Controller 
+
+Version 8.6, SG24-8542:
+https://www.redbooks.ibm.com/redpieces/abstracts/sg248542.html
+
+ IBM FlashCore Module (FCM) Product Guide: Features the newly available FCM4 with 
+AI-powered ransomware detection
+https://www.redbooks.ibm.com/redpieces/abstracts/redp5725.html
+
+ Introduction and Implementation of Data Reduction Pools and Deduplication, SG24-8430:
+http://www.redbooks.ibm.com/abstracts/sg248430.html
+
+ IBM Documentation for IBM FlashSystem: 
+https://www.ibm.com/docs/en/flashsystem-7x00/8.6.x?topic=flashsystem-7300-7200-860x
+
+ IBM FlashSystem 7300 product page: 
+https://www.ibm.com/products/flashsystem-7300
+
+ IBM Offering Information page (announcement letters and sales manuals):
+http://www.ibm.com/common/ssi/index.wss?request_locale=en
+
+ IBM FlashSystems & SAN Volume Controller FAQ 
+https://www.ibm.com/downloads/cas/2DWAMWRB
+
+ IBM FlashSystem Family FAQ 
+Overview of the IBM FlashSystem family with guidance on how to select the product that is 
+right for you:
+https://www.ibm.com/downloads/cas/9OGKVW2R
+
+ IBM FlashWatch FAQ
+Guidance about the IBM FlashWatch programs:
+https://www.ibm.com/downloads/cas/YVMYPEDE
+
+ Sales Accelerator Tools Portal for IBM Storage (IBMers only):
+https://w3.ibm.com/w3publisher/ibm-systems-storage-sales-accelerator-tools-portal
+59
+
+
+
+Authors
+Hartmut Lonzer is the IBM Storwize Territory Account Manager for DACH. In addition, he 
+covers the SAN portfolio as Offering Manager DACH. Before this position, he was OEM 
+Alliance Manager for Lenovo in IBM Germany. His working location is at the IBM German 
+headquarters in Ehningen. His main focus is on the IBM FlashSystem family and the 
+IBM SAN Volume Controller. His experience with the IBM SAN Volume Controller and 
+IBM FlashSystem products goes back to the beginning of these products. Hartmut has been 
+with IBM in various technical and sales roles for 45 years.
+
+Jon Herd is an IBM Executive Technical Advocate working for the European Storage 
+Competency Center (ESCC), Germany. He covers the United Kingdom, Ireland, and Europe, 
+advising customers on a portfolio of IBM storage products, including IBM FlashSystem 
+products. He also leads special projects for senior and executive management and is the 
+SME lead for new product introduction in the ESCC. Jon has been with IBM for more than 47 
+years, and has held various technical roles, including Europe, Middle East, and Africa 
+(EMEA) level support on mainframe servers and technical education development. He has 
+written many IBM Redbooks® publications about IBM FlashSystem products and is an 
+IBM Redbooks Platinum level author. He holds IBM certifications in Product Services at a 
+Thought Leader L3 level, and Technical Specialist at an experienced L1 level. He is also a 
+certified Chartered Member of the British Computer Society (MBCS - CITP), a Certified 
+Member of the Institution of Engineering and Technology (MIET), and a Certified Technical 
+Specialist of the Open Group (TOG).
+
+Vasfi Gucer works as the Storage Team Leader on the IBM Redbooks Team. He has more 
+than 30 years of experience in the areas of systems management, networking hardware, and 
+software. He writes extensively and teaches IBM classes worldwide about IBM products. His 
+focus has been primarily on storage, cloud computing, and cloud storage technologies for the 
+last 8 years. Vasfi is also an IBM Certified Senior IT Specialist, Project Management 
+Professional (PMP), IT Infrastructure Library (ITIL) V2 Manager, and ITIL V3 Expert. 
+
+The team would like to thank the authors of the previous edition of this publication: Corne 
+Lottering, Douwe van Terwisga, Kendall Williams, Konrad Trojok, and Shu Mookerjee
+60 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Now you can become a published author, too!
+Here's an opportunity to spotlight your skills, grow your career, and become a published 
+author—all at the same time! Join an ITSO residency project and help write a book in your 
+area of expertise, while honing your experience using leading-edge technologies. Your efforts 
+will help to increase product acceptance and customer satisfaction, as you expand your 
+network of technical contacts and relationships. Residencies run from two to six weeks in 
+length, and you can participate either in person or as a remote resident working from your 
+home base. 
+
+Find out more about the residency program, browse the residency index, and apply online at:
+ibm.com/redbooks/residencies.html
+
+Stay connected to IBM Redbooks
+ Look for us on LinkedIn:
+
+http://www.linkedin.com/groups?home=&gid=2130806
+ Explore new Redbooks publications, residencies, and workshops with the IBM Redbooks 
+
+weekly newsletter:
+https://www.redbooks.ibm.com/Redbooks.nsf/subscribe?OpenForm
+
+ Stay current on recent Redbooks publications with RSS Feeds:
+http://www.redbooks.ibm.com/rss.html
+61
+
+
+
+62 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+Notices
+
+This information was developed for products and services offered in the US. This material might be available 
+from IBM in other languages. However, you may be required to own a copy of the product or product version in 
+that language in order to access it. 
+
+IBM may not offer the products, services, or features discussed in this document in other countries. Consult 
+your local IBM representative for information on the products and services currently available in your area. Any 
+reference to an IBM product, program, or service is not intended to state or imply that only that IBM product, 
+program, or service may be used. Any functionally equivalent product, program, or service that does not 
+infringe any IBM intellectual property right may be used instead. However, it is the user’s responsibility to 
+evaluate and verify the operation of any non-IBM product, program, or service. 
+
+IBM may have patents or pending patent applications covering subject matter described in this document. The 
+furnishing of this document does not grant you any license to these patents. You can send license inquiries, in 
+writing, to:
+IBM Director of Licensing, IBM Corporation, North Castle Drive, MD-NC119, Armonk, NY 10504-1785, US 
+
+INTERNATIONAL BUSINESS MACHINES CORPORATION PROVIDES THIS PUBLICATION “AS IS” 
+WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED 
+TO, THE IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A 
+PARTICULAR PURPOSE. Some jurisdictions do not allow disclaimer of express or implied warranties in 
+certain transactions, therefore, this statement may not apply to you. 
+
+This information could include technical inaccuracies or typographical errors. Changes are periodically made 
+to the information herein; these changes will be incorporated in new editions of the publication. IBM may make 
+improvements and/or changes in the product(s) and/or the program(s) described in this publication at any time 
+without notice. 
+
+Any references in this information to non-IBM websites are provided for convenience only and do not in any 
+manner serve as an endorsement of those websites. The materials at those websites are not part of the 
+materials for this IBM product and use of those websites is at your own risk. 
+
+IBM may use or distribute any of the information you provide in any way it believes appropriate without 
+incurring any obligation to you. 
+
+The performance data and client examples cited are presented for illustrative purposes only. Actual 
+performance results may vary depending on specific configurations and operating conditions. 
+
+Information concerning non-IBM products was obtained from the suppliers of those products, their published 
+announcements or other publicly available sources. IBM has not tested those products and cannot confirm the 
+accuracy of performance, compatibility or any other claims related to non-IBM products. Questions on the 
+capabilities of non-IBM products should be addressed to the suppliers of those products. 
+
+Statements regarding IBM’s future direction or intent are subject to change or withdrawal without notice, and 
+represent goals and objectives only. 
+
+This information contains examples of data and reports used in daily business operations. To illustrate them 
+as completely as possible, the examples include the names of individuals, companies, brands, and products. 
+All of these names are fictitious and any similarity to actual people or business enterprises is entirely 
+coincidental. 
+
+COPYRIGHT LICENSE:
+
+This information contains sample application programs in source language, which illustrate programming 
+techniques on various operating platforms. You may copy, modify, and distribute these sample programs in 
+any form without payment to IBM, for the purposes of developing, using, marketing or distributing application 
+programs conforming to the application programming interface for the operating platform for which the sample 
+programs are written. These examples have not been thoroughly tested under all conditions. IBM, therefore, 
+cannot guarantee or imply reliability, serviceability, or function of these programs. The sample programs are 
+provided “AS IS”, without warranty of any kind. IBM shall not be liable for any damages arising out of your use 
+of the sample programs. 
+© Copyright IBM Corp. 2023. 63
+
+
+
+Trademarks
+IBM, the IBM logo, and ibm.com are trademarks or registered trademarks of International Business Machines 
+Corporation, registered in many jurisdictions worldwide. Other product and service names might be 
+trademarks of IBM or other companies. A current list of IBM trademarks is available on the web at “Copyright 
+and trademark information” at http://www.ibm.com/legal/copytrade.shtml 
+
+The following terms are trademarks or registered trademarks of International Business Machines Corporation, 
+and might also be trademarks or registered trademarks in other countries. 
+
+AIX® IBM Cloud® PowerVM®
+DS8000® IBM FlashCore® QRadar®
+Easy Tier® IBM FlashSystem® Redbooks®
+FlashCopy® IBM Security® Redbooks (logo) ®
+Guardium® IBM Spectrum® Storwize®
+HyperSwap® Passport Advantage®
+IBM® PowerPC®
+
+The following terms are trademarks of other companies:
+
+Intel, Intel logo, Intel Inside logo, and Intel Centrino logo are trademarks or registered trademarks of Intel 
+Corporation or its subsidiaries in the United States and other countries.
+
+ITIL is a Registered Trade Mark of AXELOS Limited.
+
+The registered trademark Linux® is used pursuant to a sublicense from the Linux Foundation, the exclusive 
+licensee of Linus Torvalds, owner of the mark on a worldwide basis.
+
+Microsoft, Windows, and the Windows logo are trademarks of Microsoft Corporation in the United States, 
+other countries, or both.
+
+Red Hat, OpenShift, are trademarks or registered trademarks of Red Hat, Inc. or its subsidiaries in the United 
+States and other countries.
+
+VMware, VMware vSphere, and the VMware logo are registered trademarks or trademarks of VMware, Inc. or 
+its subsidiaries in the United States and/or other jurisdictions.
+
+Other company, product, or service names may be trademarks or service marks of others. 
+64 IBM Storage FlashSystem 7300 Product Guide
+
+
+
+
+
+
+Back cover
+
+REDP-5668-01
+
+ISBN 0738461407
+
+Printed in U.S.A.
+
+®
+ibm.com/redbooks
