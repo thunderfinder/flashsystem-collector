@@ -6,8 +6,8 @@
 
 **Action:** Always ensure `.github/workflows/go.yml` includes Go module caching (`cache: true`), dependency verification (`go mod verify`), static code check (`go vet`), and explicit target Linux AMD64 static binary compilation.
 
-## 2025-05-18 - Environment Variable Scope in Step Conditions
+## 2025-05-18 - Optional Secret Guards & Security Integration Placeholders
 
-**Learning:** Step-level `if:` conditions in GitHub Actions are evaluated before step-level `env:` blocks are defined. Referencing `env.SONAR_TOKEN` inside a step's `if:` check when `env:` is defined only on that step causes `env.SONAR_TOKEN` to evaluate as empty string. Defining `env:` at the job level allows step `if:` conditions to evaluate environment variables correctly.
+**Learning:** Optional third-party integration workflows like `sonarqube.yml`, `endorlabs.yml`, `veracode.yml`, and `lint.yml` fail when required secrets or configuration variables (such as `SONAR_TOKEN`, `ENDOR_NAMESPACE`, `VERACODE_API_ID`) are missing or left as default placeholders (e.g. `namespace: "example"`). Using prebuilt `golangci-lint` binaries built on Go 1.24 also fails when target `go.mod` specifies Go 1.25+.
 
-**Action:** Define secrets and environment variables at the job level (`jobs.<job_id>.env`) when referencing them in step-level conditional expressions (`if: env.VAR_NAME != ''`).
+**Action:** Guard third-party security workflows with `if: env.<SECRET_VAR> != ''` or `if: vars.<CONFIG_VAR> != ''` at job or step levels so CI jobs pass when optional external services are not configured.
