@@ -1,0 +1,19 @@
+- name: golang-govulncheck-action
+  # You may pin to the exact commit or the version.
+  # uses: golang/govulncheck-action@7da72f730e37eeaad891fcff0a532d27ed737cd4
+  uses: golang/govulncheck-action@v1.0.1
+  with:
+    # Version of Go to use for govulncheck
+    go-version-input: # optional
+    # Set this option to true if you want the action to always check for the latest available Go version that satisfies the version spec
+    check-latest: # optional
+    # Used to specify whether Go caching is needed. Set to true, if you would like to enable caching.
+    cache: # optional, default is true
+    # Go Package to scan with govulncheck
+    go-package: # optional, default is ./...
+    # Directory in which to run govulncheck
+    work-dir: # optional, default is .
+    # Checkout the repository
+    repo-checkout: # optional, default is true
+    # Path to the go.mod or go.work file.
+    go-version-file: # optional
