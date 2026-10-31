@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -285,7 +286,7 @@ func (cfg *Config) validate() error {
 			return fmt.Errorf("SSH key file %q is not a regular file", cfg.SSH.KeyFile)
 		}
 		// Security: private keys must not be accessible by group or others (POSIX 0600 or stricter).
-		if info.Mode().Perm()&0077 != 0 {
+		if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
 			return fmt.Errorf("SSH key file %q has insecure permissions (%04o): must not be accessible by group or others (chmod 600 required)", cfg.SSH.KeyFile, info.Mode().Perm())
 		}
 	}
