@@ -118,7 +118,7 @@ func runCollect() {
 // Uso desde Zabbix: flashsystem-collector discover -host ... -category drives
 func runDiscover() {
 	// Flag adicional para discover.
-	category := flag.String("category", "", "Discovery category: drives|pools|volumes|enclosures|nodes|ports")
+	category := flag.String("category", "", "Discovery category: drives|pools|volumes|enclosures|nodes|ports|batteries|psus")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -126,7 +126,7 @@ func runDiscover() {
 	}
 
 	if *category == "" {
-		fatalLLD("discover requires -category flag: drives|pools|volumes|enclosures|nodes|ports")
+		fatalLLD("discover requires -category flag: drives|pools|volumes|enclosures|nodes|ports|batteries|psus")
 	}
 
 	// Inicializar cache con TTL de discovery (largo).
@@ -231,11 +231,19 @@ func runDiscoveryCollector(
 			col:      collectors.NewPortsCollector(cfg.Cache.DiscoveryTTL),
 			fieldMap: zabbix.PortLLDFields,
 		},
+		"batteries": {
+			col:      collectors.NewBatteriesCollector(cfg.Cache.DiscoveryTTL),
+			fieldMap: zabbix.BatteryLLDFields,
+		},
+		"psus": {
+			col:      collectors.NewPSUsCollector(cfg.Cache.DiscoveryTTL),
+			fieldMap: zabbix.PSULLDFields,
+		},
 	}
 
 	entry, ok := available[category]
 	if !ok {
-		return nil, nil, fmt.Errorf("unknown discovery category %q: valid values are drives|pools|volumes|enclosures|nodes|ports", category)
+		return nil, nil, fmt.Errorf("unknown discovery category %q: valid values are drives|pools|volumes|enclosures|nodes|ports|batteries|psus", category)
 	}
 
 	parserRecords, err := entry.col.Collect(client)
@@ -258,7 +266,7 @@ func buildFromStaleCache(
 	collectorNames := []string{
 		"system", "nodes", "enclosures", "drives",
 		"pools", "volumes", "ports", "flashcopy",
-		"replication", "performance",
+		"replication", "performance", "batteries", "psus",
 	}
 
 	results := make(map[string]collectors.Result, len(collectorNames))
@@ -449,12 +457,13 @@ Collect flags:
   -cache-dir string     Cache directory, default /var/tmp (env: FS_CACHE_DIR)
   -metrics-ttl duration Cache TTL for metrics, default 5m (env: FS_METRICS_TTL)
   -discovery-ttl dur    Cache TTL for discovery, default 4h (env: FS_DISCOVERY_TTL)
+  -perf-ttl duration    Cache TTL for performance stats, default 60s (env: FS_PERF_TTL)
   -max-json-bytes int   Max JSON output size, default 1048576 (env: FS_MAX_JSON_BYTES)
   -verbose              Enable verbose logging to stderr (env: FS_VERBOSE)
 
 Discover flags:
   (all collect flags) +
-  -category string      drives|pools|volumes|enclosures|nodes|ports
+  -category string      drives|pools|volumes|enclosures|nodes|ports|batteries|psus
 
 Examples:
   # Collect with SSH key (recommended):
