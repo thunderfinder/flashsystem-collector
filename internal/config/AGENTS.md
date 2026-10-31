@@ -32,6 +32,7 @@ This directory handles configuration parsing, environment loading, and validatio
 | `FS_CACHE_DIR` | `Cache.Dir` | `/var/tmp` |
 | `FS_METRICS_TTL` | `Cache.MetricsTTL` | `5m` |
 | `FS_DISCOVERY_TTL` | `Cache.DiscoveryTTL` | `4h` |
+| `FS_PERFORMANCE_TTL` | `Cache.PerformanceTTL` | `1m` |
 | `FS_DIAL_TIMEOUT` | `SSH.DialTimeout` | `10s` |
 | `FS_CMD_TIMEOUT` | `SSH.CommandTimeout` | `30s` |
 | `FS_MAX_JSON_BYTES` | `Limits.MaxJSONBytes` | `1048576` (1MB) |

@@ -188,6 +188,7 @@ Un flag explícito siempre sobreescribe la variable de entorno correspondiente.
 | `-cache-dir` | `FS_CACHE_DIR` | string | `/var/tmp` | Directorio para el archivo de cache |
 | `-metrics-ttl` | `FS_METRICS_TTL` | duration | `5m` | TTL de cache para métricas operativas |
 | `-discovery-ttl` | `FS_DISCOVERY_TTL` | duration | `4h` | TTL de cache para datos de discovery |
+| `-performance-ttl` | `FS_PERFORMANCE_TTL` | duration | `1m` | TTL de cache para stats de rendimiento |
 | `-dial-timeout` | `FS_DIAL_TIMEOUT` | duration | `10s` | Timeout de conexión TCP+SSH |
 | `-cmd-timeout` | `FS_CMD_TIMEOUT` | duration | `30s` | Timeout por comando SSH individual |
 | `-max-json-bytes` | `FS_MAX_JSON_BYTES` | int | `1048576` | Tamaño máximo del JSON de salida (bytes) |
@@ -482,10 +483,8 @@ Cada host monitoreado tiene su propio archivo de cache.
 | Tipo | TTL default | Configurable via |
 |------|------------|-----------------|
 | Métricas operativas (pools, volumes, nodes, system, flashcopy, replication) | 5 minutos | `-metrics-ttl` / `FS_METRICS_TTL` |
-| Performance (lssystemstats) | 1 minuto | no hay flag separado — usa `PerformanceTTL` hardcoded en `AllCollectors()` pasando `cfg.Cache.PerformanceTTL` |
+| Performance (lssystemstats) | 1 minuto | `-performance-ttl` / `FS_PERFORMANCE_TTL` |
 | Discovery (drives, enclosures, ports) | 4 horas | `-discovery-ttl` / `FS_DISCOVERY_TTL` |
-
-> **Nota**: `PerformanceTTL` tiene su propio campo en `CacheConfig` (default 60s) pero no tiene flag CLI ni variable de entorno expuesta en el código analizado. Su valor es siempre el default de 60s salvo que se modifique el código fuente.
 
 ### Comportamiento ante cache corrupto
 
