@@ -47,6 +47,12 @@ flashsystem-collector/
     │   └── performance.go              # lssystemstats
     └── zabbix/
         └── output.go                   # Construcción y serialización del JSON final
+├── scripts/
+│   └── flashsystem_collector.sh        # Wrapper Bash para external scripts de Zabbix
+├── template/
+│   └── IBM FlashSystem Collector.yaml # Template YAML oficial para Zabbix 6.4+
+└── env/
+    └── example.env                     # Plantilla de variables de entorno
 ```
 
 ### Organización del código
@@ -114,8 +120,8 @@ main()
 - El directorio de lock `/var/lock/flashsystem` es usado por el wrapper Bash, no por el binario Go
 
 ### Go
-- Versión mínima: **Go 1.21** (declarado en `go.mod`)
-- Razón: uso de `os.ReadFile()` (1.16+), `any` como alias de `interface{}` (1.18+)
+- Versión requerida: **Go 1.25.0** (declarado en `go.mod`)
+- Razón: alineación de dependencias y compilación estática verificada
 
 ### Dependencias externas (go.mod)
 | Módulo | Versión | Uso |
@@ -550,8 +556,8 @@ El TTL de performance (default 60s) está en `CacheConfig` pero no está expuest
 ### Sin paginación de volúmenes
 `lsvdisk` se ejecuta sin flags de paginación — retorna todos los volúmenes en una llamada. El límite `MaxVolumes` solo trunca el output JSON, no limita la consulta SSH.
 
-### Sin template Zabbix incluido
-El código no incluye ningún archivo XML/YAML de template para Zabbix. El documento menciona la estructura de items y LLD pero el template debe crearse manualmente en Zabbix.
+### Template Zabbix incluido
+El repositorio incluye el template oficial en formato YAML para Zabbix 6.4+ (compatible con 7.x) en `template/IBM FlashSystem Collector.yaml`, con el Master Item, las 6 reglas LLD, Dependent Items, JavaScript preprocessing y macros configurables.
 
 ### Campos de Record son siempre strings
 El parser retorna todos los valores como `string`. No hay conversión automática a tipos numéricos. Las expresiones JSONPath en Zabbix deben manejar que valores como `"read_io"` o `"capacity"` son strings.
