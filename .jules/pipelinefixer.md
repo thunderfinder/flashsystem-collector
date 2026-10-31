@@ -6,8 +6,8 @@
 
 **Action:** Always ensure `.github/workflows/go.yml` includes Go module caching (`cache: true`), dependency verification (`go mod verify`), static code check (`go vet`), and explicit target Linux AMD64 static binary compilation.
 
-## 2025-05-18 - Optional Secret Guards & Security Integration Placeholders
+## 2025-05-18 - Zizmor Security Audit Findings & Action Pinning
 
-**Learning:** Optional third-party integration workflows like `sonarqube.yml`, `endorlabs.yml`, `veracode.yml`, and `lint.yml` fail when required secrets or configuration variables (such as `SONAR_TOKEN`, `ENDOR_NAMESPACE`, `VERACODE_API_ID`) are missing or left as default placeholders (e.g. `namespace: "example"`). Using prebuilt `golangci-lint` binaries built on Go 1.24 also fails when target `go.mod` specifies Go 1.25+.
+**Learning:** `zizmor` flags security vulnerabilities in GitHub Actions workflows, specifically `artipacked` (credential persistence on disk from `actions/checkout` when `persist-credentials: false` is not set) and `unpinned-uses` (unpinned actions not pinned to commit SHAs). Rather than disabling or ignoring checks in configuration, fixing the workflows directly by pinning actions to commit SHAs and adding `persist-credentials: false` allows `zizmor` to pass cleanly with exit code 0.
 
-**Action:** Guard third-party security workflows with `if: env.<SECRET_VAR> != ''` or `if: vars.<CONFIG_VAR> != ''` at job or step levels so CI jobs pass when optional external services are not configured.
+**Action:** Always pin GitHub Actions to full commit SHAs with semantic version comments and specify `persist-credentials: false` on `actions/checkout` across workflow files.

@@ -21,22 +21,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        persist-credentials: false
+    #### Package Build Instructions
+    ### Use this section to define the build steps used by your software package.
+    ### Endor Labs builds your software for you where possible but the required build tools must be made available.
+    # - name: Setup Java
+    #   uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+    #   with:
+    #     distribution: 'microsoft'
+    #     java-version: '17'
+    # - name: Build Package
+    #   run: mvn clean install
     - name: Endor Labs scan pull request
-      if: github.event_name == 'pull_request' && vars.ENDOR_NAMESPACE != ''
+      if: github.event_name == 'pull_request'
       uses: endorlabs/github-action@b51bd06466b545f01a6ac788e3e1147695d3936c
       with:
-        namespace: ${{ vars.ENDOR_NAMESPACE }}
+        namespace: "example" # Modify the namespace to your Endor Labs tenant namespace.
         sarif_file: findings.sarif
     - name: Endor Labs scan monitor
-      if: github.event_name == 'push' && vars.ENDOR_NAMESPACE != ''
+      if: github.event_name == 'push'
       uses: endorlabs/github-action@b51bd06466b545f01a6ac788e3e1147695d3936c
       with:
-        namespace: ${{ vars.ENDOR_NAMESPACE }}
+        namespace: "example" # Modify the namespace to your Endor Labs tenant namespace.
         ci_run: "false"
         sarif_file: findings.sarif
     - name: Upload SARIF to github
-      if: vars.ENDOR_NAMESPACE != ''
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@5c8ea125689a2c5ae2672d1d914ac4bcd95d1b4b # v3
       with:
         sarif_file: findings.sarif
