@@ -277,8 +277,16 @@ func (cfg *Config) validate() error {
 	}
 
 	if hasKey {
-		if _, err := os.Stat(cfg.SSH.KeyFile); err != nil {
+		info, err := os.Stat(cfg.SSH.KeyFile)
+		if err != nil {
 			return fmt.Errorf("SSH key file not accessible: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("SSH key file %q is not a regular file", cfg.SSH.KeyFile)
+		}
+		// Security: private keys must not be accessible by group or others (POSIX 0600 or stricter).
+		if info.Mode().Perm()&0077 != 0 {
+			return fmt.Errorf("SSH key file %q has insecure permissions (%04o): must not be accessible by group or others (chmod 600 required)", cfg.SSH.KeyFile, info.Mode().Perm())
 		}
 	}
 
