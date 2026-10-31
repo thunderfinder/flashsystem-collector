@@ -188,13 +188,14 @@ Un flag explícito siempre sobreescribe la variable de entorno correspondiente.
 | `-cache-dir` | `FS_CACHE_DIR` | string | `/var/tmp` | Directorio para el archivo de cache |
 | `-metrics-ttl` | `FS_METRICS_TTL` | duration | `5m` | TTL de cache para métricas operativas |
 | `-discovery-ttl` | `FS_DISCOVERY_TTL` | duration | `4h` | TTL de cache para datos de discovery |
+| `-perf-ttl` | `FS_PERF_TTL` | duration | `60s` | TTL de cache para métricas de performance |
 | `-dial-timeout` | `FS_DIAL_TIMEOUT` | duration | `10s` | Timeout de conexión TCP+SSH |
 | `-cmd-timeout` | `FS_CMD_TIMEOUT` | duration | `30s` | Timeout por comando SSH individual |
 | `-max-json-bytes` | `FS_MAX_JSON_BYTES` | int | `1048576` | Tamaño máximo del JSON de salida (bytes) |
 | `-max-volumes` | `FS_MAX_VOLUMES` | int | `500` | Máximo de volúmenes en el output |
 | `-max-drives` | `FS_MAX_DRIVES` | int | `500` | Máximo de drives en el output |
 | `-verbose` | `FS_VERBOSE` | bool | `false` | Logging de debug a stderr |
-| `-category` | — | string | — | Solo para subcomando `discover`: `drives\|pools\|volumes\|enclosures\|nodes\|ports` |
+| `-category` | — | string | — | Solo para subcomando `discover`: `drives\|pools\|volumes\|enclosures\|nodes\|ports\|batteries\|psus` |
 
 ### Reglas de validación (aplicadas en `config.validate()`)
 
@@ -360,6 +361,8 @@ Todos los campos de cada Record son **strings** — los valores numéricos como 
 | `enclosures` | `{#ENCLOSUREID}`, `{#ENCLOSURESTATUS}`, `{#ENCLOSUREMODEL}` |
 | `nodes` | `{#NODEID}`, `{#NODENAME}`, `{#NODESTATUS}`, `{#NODEIOGROUP}` |
 | `ports` | `{#PORTID}`, `{#WWPN}`, `{#PORTSTATUS}`, `{#PORTNODENAME}`, `{#PORTSPEED}` |
+| `batteries` | `{#ENCLOSUREID}`, `{#BATTERYID}`, `{#BATTERYSTATUS}`, `{#BATTERYCHARGE}`, `{#BATTERYEOL}`, `{#BATTERYRECO}` |
+| `psus` | `{#ENCLOSUREID}`, `{#PSUID}`, `{#PSUSTATUS}`, `{#PSUINPUT}`, `{#PSUOUTPUT}`, `{#PSUFAN}` |
 
 ---
 
@@ -428,6 +431,8 @@ Comandos SSH ejecutados por cada collector:
 | flashcopy | `svcinfo lsfcmap -delim :` |
 | replication | `svcinfo lsreplicationrelationship -delim :` (fallback: `svcinfo lsrcrelationship -delim :`) |
 | performance | `svcinfo lssystemstats -delim :` |
+| batteries | `svcinfo lsenclosurebattery -delim :` |
+| psus | `svcinfo lsenclosurepsu -delim :` |
 
 El collector `replication` detecta automáticamente si el comando moderno falla con un error que contenga `cmmvc5753e`, `not found`, `unknown command` o `command not recognized`, y en ese caso reintenta con el comando legacy.
 

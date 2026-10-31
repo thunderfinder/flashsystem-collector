@@ -1,0 +1,10 @@
+# zizmor configuration for flashsystem-collector CI workflows
+rules:
+  # Workflows in this repository reference official and standard actions by release tag/branch
+  unpinned-uses:
+    config:
+      policies:
+        "*": ref-pin
+  # Checkout action artifact credential persistence is accepted for read-only CI tasks
+  artipacked:
+    disable: true
