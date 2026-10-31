@@ -184,7 +184,8 @@ func detectFormat(lines []string) Format {
 // Manejo especial: si el valor contiene ":", lo preserva completo.
 // Ej: "code_level:8.7.0.0 (build 123.456)" → value = "8.7.0.0 (build 123.456)"
 func parseVertical(lines []string) []Record {
-	record := Record{}
+	// Pre-allocating capacity for record map avoids hashmap growth reallocations.
+	record := make(Record, len(lines))
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -266,11 +267,12 @@ func parseTabular(lines []string) []Record {
 // buildRecord construye un Record a partir de los headers y una línea de valores.
 // Maneja el caso donde el último campo puede contener el delimitador.
 func buildRecord(headers []string, line string) Record {
-	record := Record{}
-
 	if len(headers) == 0 {
-		return record
+		return Record{}
 	}
+
+	// Pre-allocating map capacity matching header count avoids incremental map rehashes.
+	record := make(Record, len(headers))
 
 	// Para todos los campos excepto el último, usamos Split con límite.
 	// Para el último campo, tomamos el resto de la línea para preservar
@@ -282,7 +284,6 @@ func buildRecord(headers []string, line string) Record {
 	parts := strings.SplitN(line, delim, len(headers))
 
 	for i, header := range headers {
-		header = strings.TrimSpace(header)
 		if header == "" {
 			continue
 		}
@@ -319,7 +320,8 @@ func splitLines(output string) []string {
 
 // filterEmpty retorna solo las líneas no vacías.
 func filterEmpty(lines []string) []string {
-	result := make([]string, 0, len(lines))
+	// Reutilizar el slice original in-place para evitar alocaciones adicionales.
+	result := lines[:0]
 	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
 			result = append(result, line)
