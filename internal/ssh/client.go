@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -202,9 +203,17 @@ func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 		return cb, nil
 	}
 
-	// Sin InsecureHostKey y sin KnownHostsFile: no hay forma segura de verificar.
-	// Para producción se debe proveer uno de los dos.
-	// Como compromiso seguro, retornamos error en lugar de asumir insecure.
+	// Intentar fallback a ~/.ssh/known_hosts del usuario que ejecuta el proceso
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		defaultKnownHosts := filepath.Join(homeDir, ".ssh", "known_hosts")
+		if _, err := os.Stat(defaultKnownHosts); err == nil {
+			if cb, err := knownhosts.New(defaultKnownHosts); err == nil {
+				return cb, nil
+			}
+		}
+	}
+
+	// Sin InsecureHostKey y sin KnownHostsFile accesible: retornamos error en lugar de asumir insecure.
 	return nil, fmt.Errorf(
 		"SSH host key verification not configured: " +
 			"use -insecure flag (for isolated networks) or " +

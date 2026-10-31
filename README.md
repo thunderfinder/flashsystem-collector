@@ -82,6 +82,7 @@ FS_INSECURE=true
 FS_CACHE_DIR=/var/tmp
 FS_METRICS_TTL=5m
 FS_DISCOVERY_TTL=4h
+FS_PERF_TTL=60s
 FS_VERBOSE=false
 EOF
 
@@ -160,6 +161,14 @@ Update interval: 4h
 
 # Ports
 Key: flashsystem_collector.sh[{HOST.IP},discover,ports]
+Update interval: 4h
+
+# Batteries
+Key: flashsystem_collector.sh[{HOST.IP},discover,batteries]
+Update interval: 4h
+
+# PSUs
+Key: flashsystem_collector.sh[{HOST.IP},discover,psus]
 Update interval: 4h
 ```
 
