@@ -31,10 +31,11 @@ jobs:
       VERACODE_API_KEY: ${{ secrets.VERACODE_API_KEY }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       if: env.VERACODE_API_ID != ''
       with:
         repository: ''
+        persist-credentials: false
 
     - run: zip -r veracode-scan-target.zip ./
       if: env.VERACODE_API_ID != ''
@@ -45,7 +46,7 @@ jobs:
     - run: unzip -o pipeline-scan-LATEST.zip
       if: env.VERACODE_API_ID != ''
 
-    - uses: actions/setup-java@v4
+    - uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
       if: env.VERACODE_API_ID != ''
       with:
         java-version: 8
@@ -59,7 +60,7 @@ jobs:
       uses: veracode/veracode-pipeline-scan-results-to-sarif@ff08ae5b45d5384cb4679932f184c013d34da9be
       with:
         pipeline-results-json: results.json
-    - uses: github/codeql-action/upload-sarif@v3
+    - uses: github/codeql-action/upload-sarif@6bb031afdd8eb862ea3fc1848194185e076637e5 # v3.28.11
       if: env.VERACODE_API_ID != ''
       with:
         sarif_file: veracode-results.sarif
