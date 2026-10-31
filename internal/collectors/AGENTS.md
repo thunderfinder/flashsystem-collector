@@ -32,6 +32,8 @@ All resource collectors must be instantiated and registered in `AllCollectors(me
 | FlashCopy | `flashcopy` | `svcinfo lsfcmap -delim :` |
 | Replication | `replication` | `svcinfo lsreplicationrelationship -delim :` (Fallback: `svcinfo lsrcrelationship -delim :`) |
 | Performance | `performance` | `svcinfo lssystemstats -delim :` |
+| Batteries | `batteries` | `svcinfo lsenclosurebattery -delim :` |
+| PSUs | `psus` | `svcinfo lsenclosurepsu -delim :` |
 
 ---
 
