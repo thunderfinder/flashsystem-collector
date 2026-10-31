@@ -37,7 +37,7 @@ func (c *PoolsCollector) TTL() time.Duration {
 //
 // Implementa Collector.
 func (c *PoolsCollector) Collect(client *internalssh.Client) ([]parser.Record, error) {
-	output, err := client.Run("svcinfo lsmdiskgrp -delim :")
+	output, err := client.Run("svcinfo lsmdiskgrp -bytes -delim :")
 	if err != nil {
 		return nil, fmt.Errorf("pools collector: %w", err)
 	}

@@ -214,6 +214,8 @@ func AllCollectors(metricsTTL, discoveryTTL, performanceTTL time.Duration) []Col
 		NewFlashCopyCollector(metricsTTL),
 		NewReplicationCollector(metricsTTL),
 		NewPerformanceCollector(performanceTTL),
+		NewBatteriesCollector(discoveryTTL),
+		NewPSUsCollector(discoveryTTL),
 	}
 }
 

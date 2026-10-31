@@ -17,7 +17,7 @@ This directory formats and serializes collected metrics and discovery data into 
 
 ### 1. Master Item Payload Structure (`zabbix.Output`)
 Top-level keys must remain exact:
-`timestamp`, `host`, `version`, `system`, `nodes`, `enclosures`, `drives`, `pools`, `volumes`, `ports`, `flashcopy`, `replication`, `performance`, `status`, `cache_stats`.
+`timestamp`, `host`, `version`, `system`, `nodes`, `enclosures`, `drives`, `pools`, `volumes`, `ports`, `flashcopy`, `replication`, `performance`, `status`, `cache_stats`, `batteries`, `psus`, `units_info`.
 
 ### 2. Low-Level Discovery (LLD) Structure
 Output must follow `{"data": [...]}` format.
@@ -29,6 +29,8 @@ Macro Key Contract (Do NOT rename without updating template YAML & docs):
 - Enclosures: `{#ENCLOSUREID}`, `{#ENCLOSURESTATUS}`, `{#ENCLOSUREMODEL}`
 - Nodes: `{#NODEID}`, `{#NODENAME}`, `{#NODESTATUS}`, `{#NODEIOGROUP}`
 - Ports: `{#PORTID}`, `{#WWPN}`, `{#PORTSTATUS}`, `{#PORTNODENAME}`, `{#PORTSPEED}`
+- Batteries: `{#ENCLOSUREID}`, `{#BATTERYID}`, `{#BATTERYSTATUS}`, `{#BATTERYCHARGE}`, `{#BATTERYEOL}`, `{#BATTERYRECO}`
+- PSUs: `{#ENCLOSUREID}`, `{#PSUID}`, `{#PSUSTATUS}`, `{#PSUINPUT}`, `{#PSUOUTPUT}`, `{#PSUFAN}`
 
 ---
 
