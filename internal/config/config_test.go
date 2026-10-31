@@ -284,7 +284,11 @@ func TestParseDurationEnv(t *testing.T) {
 func TestLoadWithFlags(t *testing.T) {
 	// Guardar os.Args original y CommandLine
 	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
+	oldCommandLine := flag.CommandLine
+	defer func() {
+		os.Args = oldArgs
+		flag.CommandLine = oldCommandLine
+	}()
 
 	tempDir := t.TempDir()
 	os.Args = []string{
