@@ -180,6 +180,8 @@ go vet ./...
    - `lsfcmap -delim :`
    - `lsreplicationrelationship -delim :` (Fallback: `lsrcrelationship -delim :` for legacy firmware versions returning `cmmvc5753e`, `not found`, or `unknown command`)
    - `lssystemstats -delim :`
+   - `lsenclosurebattery -delim :`
+   - `lsenclosurepsu -delim :`
 2. **Parsing Rules**:
    - Always request colon-separated output (`-delim :`).
    - Treat all parsed record values as `string`. Do not attempt unsafe type coercions in parsers.
@@ -204,6 +206,8 @@ go vet ./...
      - Enclosures: `{#ENCLOSUREID}`, `{#ENCLOSURESTATUS}`, `{#ENCLOSUREMODEL}`
      - Nodes: `{#NODEID}`, `{#NODENAME}`, `{#NODESTATUS}`, `{#NODEIOGROUP}`
      - Ports: `{#PORTID}`, `{#WWPN}`, `{#PORTSTATUS}`, `{#PORTNODENAME}`, `{#PORTSPEED}`
+     - Batteries: `{#BATTERYID}`, `{#ENCLOSUREID}`, `{#BATTERYSTATUS}`, `{#BATTERYCHARGE}`, `{#BATTERYEOL}`, `{#BATTERYRECO}`
+     - PSUs: `{#PSUID}`, `{#ENCLOSUREID}`, `{#PSUSTATUS}`, `{#PSUINPUT}`, `{#PSUOUTPUT}`, `{#PSUFAN}`
 3. **Empty / Error Output Contract**:
    - On discovery error, output must be `{"data":[]}` so Zabbix does not purge existing discovered entities or cause false alerts.
    - On collect fatal error, output JSON must contain `status.success: false` and populate `status.errors[]`.
