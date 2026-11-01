@@ -304,8 +304,16 @@ func (cfg *Config) validate() error {
 	}
 
 	if !cfg.SSH.InsecureHostKey && cfg.SSH.KnownHostsFile != "" {
-		if _, err := os.Stat(cfg.SSH.KnownHostsFile); err != nil {
+		info, err := os.Stat(cfg.SSH.KnownHostsFile)
+		if err != nil {
 			return fmt.Errorf("known_hosts file not accessible: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("known_hosts file %q is not a regular file", cfg.SSH.KnownHostsFile)
+		}
+		// Security: known_hosts must not be writable by group or others (POSIX 0644 or stricter).
+		if runtime.GOOS != "windows" && info.Mode().Perm()&0022 != 0 {
+			return fmt.Errorf("known_hosts file %q has insecure permissions (%04o): must not be writable by group or others (chmod 644 or 600 required)", cfg.SSH.KnownHostsFile, info.Mode().Perm())
 		}
 	}
 
