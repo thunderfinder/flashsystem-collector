@@ -11,3 +11,9 @@
 **Learning:** Optional third-party integration workflows like `sonarqube.yml`, `endorlabs.yml`, `veracode.yml`, and `lint.yml` fail when required secrets or configuration variables (such as `SONAR_TOKEN`, `ENDOR_NAMESPACE`, `VERACODE_API_ID`) are missing or left as default placeholders (e.g. `namespace: "example"`). Using prebuilt `golangci-lint` binaries built on Go 1.24 also fails when target `go.mod` specifies Go 1.25+.
 
 **Action:** Guard third-party security workflows with `if: env.<SECRET_VAR> != ''` or `if: vars.<CONFIG_VAR> != ''` at job or step levels so CI jobs pass when optional external services are not configured.
+
+## 2026-11-01 - DevSkim-Action .NET Runtime Version Pinning Failure
+
+**Learning:** `microsoft/DevSkim-Action@914fa647b406c387000300b2f09bb28691be2b6d` (v1.0.14) builds its container using `dotnet tool install --tool-path /tools Microsoft.CST.DevSkim.Cli` from an unpinned package source on a .NET 7.0 SDK image. Newer releases of `Microsoft.CST.DevSkim.Cli` (>= 1.0.100) dropped support for `net7.0`, causing Docker container build failures during CI execution (`Package Microsoft.CST.DevSkim.CLI 1.0.100 is not compatible with net7.0`). The official DevSkim-Action `v1` release was updated to commit `734c6ed89671b1c7a5211ed334c79db261e3f221` which upgrades the Dockerfile to .NET 8.0 SDK and pins the CLI to `--version 1.0.90`.
+
+**Action:** Pin `microsoft/DevSkim-Action` to commit `734c6ed89671b1c7a5211ed334c79db261e3f221` (# v1) to prevent Docker container build failures from unpinned NuGet dependency drift.
