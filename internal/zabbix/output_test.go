@@ -192,4 +192,7 @@ func TestLLDOutput(t *testing.T) {
 	if item0["{#DRIVESTATUS}"] != "online" {
 		t.Errorf("expected {#DRIVESTATUS} online, got %s", item0["{#DRIVESTATUS}"])
 	}
+	if item0["{#DRIVECAPACITY}"] != "1.9TB" {
+		t.Errorf("expected {#DRIVECAPACITY} 1.9TB, got %s", item0["{#DRIVECAPACITY}"])
+	}
 }
