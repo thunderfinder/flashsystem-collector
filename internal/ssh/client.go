@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -196,6 +197,9 @@ func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 	}
 
 	if cfg.KnownHostsFile != "" {
+		if err := validateKnownHostsFile(cfg.KnownHostsFile); err != nil {
+			return nil, fmt.Errorf("invalid known_hosts file: %w", err)
+		}
 		cb, err := knownhosts.New(cfg.KnownHostsFile)
 		if err != nil {
 			return nil, fmt.Errorf("cannot load known_hosts from %q: %w", cfg.KnownHostsFile, err)
@@ -206,7 +210,7 @@ func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 	// Intentar fallback a ~/.ssh/known_hosts del usuario que ejecuta el proceso
 	if homeDir, err := os.UserHomeDir(); err == nil {
 		defaultKnownHosts := filepath.Join(homeDir, ".ssh", "known_hosts")
-		if _, err := os.Stat(defaultKnownHosts); err == nil {
+		if err := validateKnownHostsFile(defaultKnownHosts); err == nil {
 			if cb, err := knownhosts.New(defaultKnownHosts); err == nil {
 				return cb, nil
 			}
@@ -219,4 +223,20 @@ func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 			"use -insecure flag (for isolated networks) or " +
 			"-known-hosts /path/to/known_hosts (for production)",
 	)
+}
+
+// validateKnownHostsFile verifies that a known_hosts file is a regular file and
+// not writable by group or others on POSIX systems (chmod 644 or 600 required).
+func validateKnownHostsFile(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("cannot access known_hosts file %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("known_hosts file %q is not a regular file", path)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0022 != 0 {
+		return fmt.Errorf("known_hosts file %q has insecure permissions (%04o): must not be writable by group or others (chmod 644 or 600 required)", path, info.Mode().Perm())
+	}
+	return nil
 }

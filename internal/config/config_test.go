@@ -98,6 +98,108 @@ func TestValidateKeyFilePermissions(t *testing.T) {
 	}
 }
 
+func TestValidateKnownHostsPermissions(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 1. Valid known_hosts file with 0644 permissions
+	validKnownHosts := filepath.Join(tempDir, "valid_known_hosts")
+	if err := os.WriteFile(validKnownHosts, []byte("@revoked ..."), 0644); err != nil {
+		t.Fatalf("failed to write valid known_hosts: %v", err)
+	}
+	if err := os.Chmod(validKnownHosts, 0644); err != nil {
+		t.Fatalf("failed to chmod valid known_hosts: %v", err)
+	}
+
+	cfg := defaultConfig()
+	cfg.SSH.Host = "10.0.0.1"
+	cfg.SSH.User = "monitor"
+	cfg.SSH.Password = "secret"
+	cfg.SSH.InsecureHostKey = false
+	cfg.SSH.KnownHostsFile = validKnownHosts
+	cfg.Cache.Dir = tempDir
+
+	if err := cfg.validate(); err != nil {
+		t.Fatalf("expected valid known_hosts file with 0644 permissions to pass, got: %v", err)
+	}
+
+	// 2. Valid known_hosts file with 0600 permissions
+	validKnownHosts600 := filepath.Join(tempDir, "valid_known_hosts_600")
+	if err := os.WriteFile(validKnownHosts600, []byte("@revoked ..."), 0600); err != nil {
+		t.Fatalf("failed to write valid known_hosts 0600: %v", err)
+	}
+	if err := os.Chmod(validKnownHosts600, 0600); err != nil {
+		t.Fatalf("failed to chmod valid known_hosts 0600: %v", err)
+	}
+
+	cfg.SSH.KnownHostsFile = validKnownHosts600
+	if err := cfg.validate(); err != nil {
+		t.Fatalf("expected valid known_hosts file with 0600 permissions to pass, got: %v", err)
+	}
+
+	if runtime.GOOS != "windows" {
+		// 3. Insecure known_hosts file with 0666 permissions (group/world writable)
+		insecureKnownHosts := filepath.Join(tempDir, "insecure_known_hosts")
+		if err := os.WriteFile(insecureKnownHosts, []byte("fake-hosts"), 0666); err != nil {
+			t.Fatalf("failed to write insecure known_hosts: %v", err)
+		}
+		if err := os.Chmod(insecureKnownHosts, 0666); err != nil {
+			t.Fatalf("failed to chmod insecure known_hosts: %v", err)
+		}
+
+		cfg.SSH.KnownHostsFile = insecureKnownHosts
+		err := cfg.validate()
+		if err == nil {
+			t.Fatal("expected error for insecure known_hosts permissions (0666), got nil")
+		}
+		if !strings.Contains(err.Error(), "insecure permissions") {
+			t.Fatalf("expected insecure permissions error message, got: %v", err)
+		}
+
+		// 4. Insecure known_hosts file with 0664 permissions (group writable)
+		insecureKnownHosts664 := filepath.Join(tempDir, "insecure_known_hosts_664")
+		if err := os.WriteFile(insecureKnownHosts664, []byte("fake-hosts"), 0664); err != nil {
+			t.Fatalf("failed to write insecure known_hosts 0664: %v", err)
+		}
+		if err := os.Chmod(insecureKnownHosts664, 0664); err != nil {
+			t.Fatalf("failed to chmod insecure known_hosts 0664: %v", err)
+		}
+
+		cfg.SSH.KnownHostsFile = insecureKnownHosts664
+		err = cfg.validate()
+		if err == nil {
+			t.Fatal("expected error for insecure known_hosts permissions (0664), got nil")
+		}
+		if !strings.Contains(err.Error(), "insecure permissions") {
+			t.Fatalf("expected insecure permissions error message, got: %v", err)
+		}
+	}
+
+	// 5. Directory specified instead of regular file
+	khDir := filepath.Join(tempDir, "kh_dir")
+	if err := os.Mkdir(khDir, 0755); err != nil {
+		t.Fatalf("failed to create known_hosts dir: %v", err)
+	}
+
+	cfg.SSH.KnownHostsFile = khDir
+	err := cfg.validate()
+	if err == nil {
+		t.Fatal("expected error for directory known_hosts, got nil")
+	}
+	if !strings.Contains(err.Error(), "not a regular file") {
+		t.Fatalf("expected 'not a regular file' error message, got: %v", err)
+	}
+
+	// 6. Non-existent file
+	cfg.SSH.KnownHostsFile = filepath.Join(tempDir, "non_existent_kh")
+	err = cfg.validate()
+	if err == nil {
+		t.Fatal("expected error for non-existent known_hosts, got nil")
+	}
+	if !strings.Contains(err.Error(), "not accessible") {
+		t.Fatalf("expected 'not accessible' error message, got: %v", err)
+	}
+}
+
 func TestDefaultConfig(t *testing.T) {
 	cfg := defaultConfig()
 
