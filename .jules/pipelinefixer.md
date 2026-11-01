@@ -11,3 +11,9 @@
 **Learning:** Optional third-party integration workflows like `sonarqube.yml`, `endorlabs.yml`, `veracode.yml`, and `lint.yml` fail when required secrets or configuration variables (such as `SONAR_TOKEN`, `ENDOR_NAMESPACE`, `VERACODE_API_ID`) are missing or left as default placeholders (e.g. `namespace: "example"`). Using prebuilt `golangci-lint` binaries built on Go 1.24 also fails when target `go.mod` specifies Go 1.25+.
 
 **Action:** Guard third-party security workflows with `if: env.<SECRET_VAR> != ''` or `if: vars.<CONFIG_VAR> != ''` at job or step levels so CI jobs pass when optional external services are not configured.
+
+## 2026-11-01 - Go Toolchain Alignment in SLSA Release Workflow
+
+**Learning:** The SLSA provenance generation workflow `.github/workflows/go-ossf-slsa3-publish.yml` was configured with default template value `go-version: 1.17`. Since the repository mandates Go 1.25.0 in `go.mod` and leverages modern Go standard libraries and dependencies (`golang.org/x/crypto`), any release build triggered under Go 1.17 will fail immediately.
+
+**Action:** Ensure all release and provenance workflows align with the repository's required Go version (currently `'1.25'`) as dictated in `go.mod` and `.github/workflows/AGENTS.md`.
