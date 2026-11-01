@@ -18,7 +18,7 @@ echo "Wiki Git URL:     ${WIKI_REPO_URL}"
 
 if [[ ! -d "${SOURCE_DIR}" ]]; then
     echo "ERROR: Source directory '${SOURCE_DIR}' not found!" >&2
-    return 1 2>/dev/null || false
+    exit 1
 fi
 
 rm -rf "${WORK_DIR}"
