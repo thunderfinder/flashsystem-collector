@@ -21,7 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
     - name: Endor Labs scan pull request
       if: github.event_name == 'pull_request' && vars.ENDOR_NAMESPACE != ''
       uses: endorlabs/github-action@b51bd06466b545f01a6ac788e3e1147695d3936c
@@ -37,6 +39,6 @@ jobs:
         sarif_file: findings.sarif
     - name: Upload SARIF to github
       if: vars.ENDOR_NAMESPACE != ''
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@6bb031afdd8eb862ea3fc1848194185e076637e5 # v3.28.11
       with:
         sarif_file: findings.sarif
