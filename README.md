@@ -34,7 +34,8 @@ A high-performance Go monitoring collector and Zabbix integration for **IBM Flas
 │   │  - Master Item:  flashsystem_collector.sh collect    │   │
 │   │    └─ Dependent Items (JSONPath & JS preprocessing) │   │
 │   │  - LLD Rules:    flashsystem_collector.sh discover  │   │
-│   │    └─ Pools, Drives, Volumes, Enclosures, Nodes, ...│   │
+│   │    └─ Pools, Drives, Volumes, Enclosures, Nodes,    │   │
+│   │       Ports, Batteries, PSUs                        │   │
 │   └──────────────────────────┬──────────────────────────┘   │
 │                              │ executes                     │
 │                              ▼                              │
@@ -215,6 +216,7 @@ FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts
 FS_CACHE_DIR=/var/tmp
 FS_METRICS_TTL=5m
 FS_DISCOVERY_TTL=4h
+FS_PERFORMANCE_TTL=1m
 
 # --- Logging & Limits ---
 FS_VERBOSE=false
@@ -320,13 +322,14 @@ Configuration options follow strict precedence:
 | `-cache-dir` | `FS_CACHE_DIR` | `/var/tmp` | Writable directory path | Directory storing host JSON cache files. |
 | `-metrics-ttl` | `FS_METRICS_TTL` | `5m` | Duration (>= `1s`, e.g., `5m`, `300s`) | Cache validity duration for operational metrics. |
 | `-discovery-ttl` | `FS_DISCOVERY_TTL` | `4h` | Duration (>= `1m`, e.g., `4h`, `240m`) | Cache validity duration for LLD discovery. |
+| `-performance-ttl` | `FS_PERFORMANCE_TTL` | `1m` | Duration (>= `1s`, e.g., `1m`, `60s`) | Cache validity duration for performance stats (alias: `-perf-ttl` / `FS_PERF_TTL`). |
 | `-dial-timeout` | `FS_DIAL_TIMEOUT` | `10s` | Duration (>= `1s`, e.g., `10s`) | Timeout for TCP dial and SSH handshake. |
 | `-cmd-timeout` | `FS_CMD_TIMEOUT` | `30s` | Duration (>= `1s`, e.g., `30s`) | Timeout per individual SSH command execution. |
 | `-max-json-bytes`| `FS_MAX_JSON_BYTES` | `1048576` (1MB)| Integer (>= `1024`) | Maximum bytes for stdout JSON payload. |
 | `-max-volumes` | `FS_MAX_VOLUMES` | `500` | Integer (>= `1`) | Maximum volume records included in JSON output. |
 | `-max-drives` | `FS_MAX_DRIVES` | `500` | Integer (>= `1`) | Maximum drive records included in JSON output. |
 | `-verbose` | `FS_VERBOSE` | `false` | `true`, `false`, `1`, `0` | Enables debug logging to `stderr`. |
-| `-category` | *(none)* | *(empty)* | `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports` | **Required** for `discover` subcommand. |
+| `-category` | *(none)* | *(empty)* | `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus` | **Required** for `discover` subcommand. |
 
 ---
 
@@ -346,6 +349,8 @@ The collector executes the following native CLI commands via `svcinfo` using col
 | **FlashCopy** | `svcinfo lsfcmap` | Copy map progress, status, copy rate, source/target disks. |
 | **Replication** | `svcinfo lsreplicationrelationship` *(legacy fallback: `lsrcrelationship`)* | Remote copy status, sync progress, consistency group state. |
 | **Performance** | `svcinfo lssystemstats` | Read/write IOPS, read/write MB/s, read/write latency (ms), CPU usage (%), FC throughput, FC IOPS. |
+| **Enclosure Batteries** | `svcinfo lsenclosurebattery` | Enclosure battery status, charge level (%), EOL warning, recondition needed (`{#ENCLOSUREID}`, `{#BATTERYID}`, `{#BATTERYSTATUS}`, `{#BATTERYCHARGE}`, `{#BATTERYEOL}`, `{#BATTERYRECO}`). |
+| **Power Supply Units** | `svcinfo lsenclosurepsu` | PSU status, input/output failure flags, fan failure flags (`{#ENCLOSUREID}`, `{#PSUID}`, `{#PSUSTATUS}`, `{#PSUINPUT}`, `{#PSUOUTPUT}`, `{#PSUFAN}`). |
 
 > **Enabling Storage Statistics**:
 > The `lssystemstats` command requires background statistics collection to be enabled on the storage cluster. If statistics are disabled (`statistics_status: off`), execute the following command on the FlashSystem CLI:
@@ -375,7 +380,7 @@ The collector executes the following native CLI commands via `svcinfo` using col
 | `command ... timed out after 30s` | FlashSystem CLI overloaded or slow network. | `ping <IP>` and check storage CPU | Increase timeout via `FS_CMD_TIMEOUT=60s` or `-cmd-timeout 60s`. |
 | `empty response from lssystemstats` | Performance stats collection is inactive on storage. | Run `svcinfo lssystem \| grep statistics_status` | Enable stats on FlashSystem: `svctask startstats -interval 1`. |
 | Zabbix item status: `Unsupported` | Timeout reached before external script finished. | `tail -n 50 /var/log/zabbix/zabbix_server.log` | Increase script timeout in `zabbix_server.conf` (`Timeout=30` or `55`) and template macro `{$FS_TIMEOUT}`. |
-| Discovery returns `{"data":[]}` | Invalid category or SSH failure. | `tail -n 50 /var/log/zabbix/flashsystem_collector.log` | Validate category name (`drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`) and verify SSH key access. |
+| Discovery returns `{"data":[]}` | Invalid category or SSH failure. | `tail -n 50 /var/log/zabbix/flashsystem_collector.log` | Validate category name (`drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`) and verify SSH key access. |
 | `cache directory error` | `/var/tmp` or custom cache dir not writable. | `sudo -u zabbix touch /var/tmp/test_write` | Fix permissions on cache directory (`chown zabbix:zabbix /var/tmp` or use dedicated dir). |
 | Collector output truncated | Total JSON payload exceeds `MaxJSONBytes` (1MB). | Check `status.truncated_at` in output JSON | Adjust `-max-volumes` or increase `FS_MAX_JSON_BYTES=2097152`. |
 
@@ -401,6 +406,8 @@ flashsystem-collector/
 │   │   ├── ports.go                    # lsportfc collector
 │   │   ├── flashcopy.go                # lsfcmap collector
 │   │   ├── replication.go              # lsreplicationrelationship collector
+│   │   ├── batteries.go                # lsenclosurebattery collector
+│   │   ├── psus.go                     # lsenclosurepsu collector
 │   │   └── performance.go              # lssystemstats collector
 │   ├── config/                         # CLI flag and environment variable parsing
 │   ├── parser/                         # Colon-delimited svcinfo parser

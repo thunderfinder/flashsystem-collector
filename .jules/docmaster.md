@@ -23,3 +23,9 @@
 **Learning:** The project lacked an organized, comprehensive GitHub Wiki detailing the inner workings, concurrency model (goroutine semaphore), multi-tier cache TTL architecture, atomic disk operations (`rename`), stale-data fallback behavior, LLD discovery definitions across all 8 supported categories, and complete metric catalogs. Keeping documentation solely in `README.md` or unversioned markdown files causes drift and operational opacity.
 
 **Action:** Designed and created a 24-page GitHub Wiki structure (plus `_Sidebar.md`) synchronized directly in `docs/wiki/` and prepared in the GitHub Wiki repository (`thunderfinder/flashsystem-collector.wiki.git`). Validated all cross-links and structure using a dedicated validator tool (`validate_wiki.py`).
+
+## 2026-11-02 - Alignment of 12 Collectors, 8 LLD Discovery Categories, and Performance TTL
+
+**Learning:** A significant documentation gap existed between `README.md` and the actual implementation: `README.md` omitted 2 collectors (`batteries` / `lsenclosurebattery` and `psus` / `lsenclosurepsu`) and restricted the documented discovery categories to 6 instead of the 8 supported by `main.go`, `scripts/flashsystem_collector.sh`, and `template/IBM FlashSystem Collector.yaml`. Additionally, `README.md` and `env/example.env` omitted `-performance-ttl` / `FS_PERFORMANCE_TTL`, and `env/example.env` previously defaulted to `FS_INSECURE=true`, which conflicted with project security standards.
+
+**Action:** Kept `README.md` synchronized with the source code by documenting all 12 collectors, all 8 LLD categories (`drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`), and `FS_PERFORMANCE_TTL` (default `1m`, duration >= 1s) with backward-compatible alias `FS_PERF_TTL`. Hardened `env/example.env` to default to `FS_KNOWN_HOSTS`.
