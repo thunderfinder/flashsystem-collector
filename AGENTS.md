@@ -17,9 +17,9 @@ This is the authoritative instruction guide for AI agents working in `thunderfin
 - **Output Safety & Truncation**: Guarantees valid JSON output on stdout (never empty output) even on fatal configuration errors, with size and record count limits (`MaxJSONBytes`, `MaxVolumes`, `MaxDrives`).
 
 ### Key Technologies
-- **Go**: Version `1.25.0` (specified in `go.mod`).
-- **Dependencies**: `golang.org/x/crypto` for SSH client capabilities.
-- **Integration Target**: Zabbix Server / Proxy (6.0+ and 7.x) via External Scripts and JSONPath preprocessing.
+- **Go**: Version `1.25.0` (specified in `go.mod`). Note that while installation documentation mentions Go 1.21+, the actual module toolchain is Go `1.25.0`.
+- **Dependencies**: `golang.org/x/crypto v0.52.0` for SSH client capabilities.
+- **Integration Target**: Zabbix Server / Proxy (6.0+ and 7.x) via External Scripts, JSONPath preprocessing, and the official template in `template/IBM FlashSystem Collector.yaml`.
 
 ---
 
@@ -33,6 +33,8 @@ Before making any changes in this repository, coding agents **must**:
 5. Inspect source code and existing tests in the target package before editing.
 6. Verify understanding of affected consumers and data contracts.
 
+Agents must not start editing simply because they recognize a filename or function. They must understand the component lifecycle and data flow.
+
 ---
 
 ## C. Architecture and Execution Flow
@@ -42,6 +44,7 @@ Before making any changes in this repository, coding agents **must**:
 .
 ├── main.go                             # Application entry point, subcommand routing, stale cache fallback
 ├── go.mod                              # Module definition (github.com/flashsystem-collector)
+├── go.sum                              # Module checksums
 ├── internal/
 │   ├── config/config.go                # Config loading (flags > env > defaults) & validation
 │   ├── ssh/client.go                   # SSH connection management, dial/command timeouts, host-key handling
@@ -63,7 +66,7 @@ Before making any changes in this repository, coding agents **must**:
 ├── scripts/
 │   └── flashsystem_collector.sh        # Zabbix wrapper script (flock, env file loading, logging)
 └── template/
-    └── IBM FlashSystem Collector.yaml # Zabbix template definition
+    └── IBM FlashSystem Collector.yaml # Zabbix template definition for Master/Dependent items & LLD
 ```
 
 ### Main Operational Workflows
@@ -96,9 +99,9 @@ Before making any changes in this repository, coding agents **must**:
 ## D. Technology and Development Environment
 
 ### Software Requirements
-- **Go Compiler**: Go `1.25.0` (as required by `go.mod`). Note: documentation references Go 1.21+, but `go.mod` specifies `1.25.0`.
+- **Go Compiler**: Go `1.25.0` (as required by `go.mod`).
 - **Target OS**: Linux x86_64 (`GOOS=linux GOARCH=amd64`).
-- **Dependencies**: Listed in `go.mod` (`golang.org/x/crypto v0.49.0`).
+- **Dependencies**: Listed in `go.mod` (`golang.org/x/crypto v0.52.0`).
 
 ### Build & Test Commands
 ```bash
@@ -109,9 +112,9 @@ go mod tidy
 go build -o flashsystem-collector .
 
 # Static cross-compilation for Linux AMD64
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o flashsystem-collector .
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o flashsystem-collector .
 
-# Run tests
+# Run all tests
 go test ./...
 
 # Run tests with race detection
@@ -199,7 +202,7 @@ go vet ./...
      `timestamp`, `host`, `version`, `system`, `nodes`, `enclosures`, `drives`, `pools`, `volumes`, `ports`, `flashcopy`, `replication`, `performance`, `status`, `cache_stats`.
 2. **LLD Macro Contract**:
    - Output must follow `{"data": [{"{#MACRO}": "value"}]}`.
-   - Macro names must remain stable:
+   - Macro names must remain stable (refer to `template/IBM FlashSystem Collector.yaml`):
      - Drives: `{#DRIVEID}`, `{#ENCLOSUREID}`, `{#SLOTID}`, `{#DRIVESTATUS}`, `{#DRIVETYPE}`, `{#DRIVECAPACITY}`
      - Pools: `{#POOLID}`, `{#POOLNAME}`, `{#POOLSTATUS}`
      - Volumes: `{#VOLUMEID}`, `{#VOLUMENAME}`, `{#VOLUMESTATUS}`, `{#VOLUMEPOOL}`

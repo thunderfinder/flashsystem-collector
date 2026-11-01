@@ -1,6 +1,6 @@
 # AGENTS.md — internal/zabbix Component Instructions
 
-This directory formats and serializes collected metrics and discovery data into Zabbix-compatible JSON representations.
+This directory formats and serializes collected metrics and discovery data into Zabbix-compatible JSON representations, directly corresponding to items and discovery rules defined in `template/IBM FlashSystem Collector.yaml`.
 
 ---
 
@@ -13,11 +13,13 @@ This directory formats and serializes collected metrics and discovery data into 
 
 ---
 
-## Output Contracts
+## Output Contracts & Template Alignment
 
 ### 1. Master Item Payload Structure (`zabbix.Output`)
 Top-level keys must remain exact:
 `timestamp`, `host`, `version`, `system`, `nodes`, `enclosures`, `drives`, `pools`, `volumes`, `ports`, `flashcopy`, `replication`, `performance`, `status`, `cache_stats`, `batteries`, `psus`, `units_info`.
+
+Zabbix dependent items extract values from these keys using JSONPath expressions defined in `template/IBM FlashSystem Collector.yaml` (e.g., `$.system[0].status`, `$.performance[?(@.stat_name=='read_io')].stat_current`).
 
 ### 2. Low-Level Discovery (LLD) Structure
 Output must follow `{"data": [...]}` format.
@@ -44,12 +46,13 @@ Macro Key Contract (Do NOT rename without updating template YAML & docs):
    - Individual collector errors are collected into `status.errors[]`.
 3. **Payload Reduction Strategy**:
    - If output exceeds `MaxJSONBytes`, `reduceOutput()` progressively reduces volume/drive counts and drops secondary sections (`FlashCopy`, `Replication`) before failing.
+4. **Template Compatibility**:
+   - Any additions or changes to JSON fields or LLD macros must be mirrored in `template/IBM FlashSystem Collector.yaml` and documented in `README.md`.
 
 ---
 
 ## Testing Guidelines
 
 - Test `Build()` with complete results, partial error results, and total failure results.
-- Test truncation handling when `MaxVolumes` or `MaxDrives` limits are hit.
-- Test `reduceOutput()` payload size reduction logic.
-- Test `LLDOutput()` mapping for all 6 discovery categories.
+- Test LLD formatting for each category to ensure macro keys and record counts match input fixtures.
+- Test payload reduction logic when payload size exceeds `MaxJSONBytes`.
