@@ -197,6 +197,17 @@ func TestParseEmptyAndErrors(t *testing.T) {
 	}
 }
 
+func BenchmarkIsNoResults(b *testing.B) {
+	line := "0:vol_prod_001:0:io_grp0:online:0:Pool0:100.00GB:striped:yes:::none::none::60050768018105AA0000000000000001:0:1:empty:0:no:0"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if isNoResults(line) {
+			b.Fatal("unexpected true")
+		}
+	}
+}
+
 func TestParseVerticalForced(t *testing.T) {
 	res := ParseVerticalForced(sampleLssystem)
 	if res.Format != FormatVertical {

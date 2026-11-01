@@ -335,13 +335,14 @@ func filterEmpty(lines []string) []string {
 
 // isNoResults detecta las variantes de "sin resultados" que retorna svcinfo.
 // Spectrum Virtualize retorna distintas variantes según la versión.
+// Utiliza strings.EqualFold y verificación de prefijo para evitar alocaciones de heap
+// innecesarias en cada línea procesada de tablas grandes (e.g. lsvdisk, lsdrive).
 func isNoResults(line string) bool {
-	lower := strings.ToLower(strings.TrimSpace(line))
-	return lower == "no results" ||
-		lower == "no result" ||
-		lower == "no objects found" ||
-		lower == "cmmvc5845e" || // Código de error IBM: objeto no encontrado
-		strings.HasPrefix(lower, "cmmvc") // Cualquier error IBM empieza con CMMVC
+	line = strings.TrimSpace(line)
+	return strings.EqualFold(line, "no results") ||
+		strings.EqualFold(line, "no result") ||
+		strings.EqualFold(line, "no objects found") ||
+		(len(line) >= 5 && strings.EqualFold(line[:5], "cmmvc"))
 }
 
 // GetField extrae un campo de un Record con valor por defecto si no existe.
