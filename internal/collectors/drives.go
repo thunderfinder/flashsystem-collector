@@ -44,5 +44,10 @@ func (c *DrivesCollector) Collect(client *internalssh.Client) ([]parser.Record, 
 	}
 
 	result := parser.Parse(output)
+	for _, rec := range result.Records {
+		if capVal, ok := rec["capacity"]; ok && capVal != "" {
+			rec["capacity"] = parser.FormatCapacity(capVal)
+		}
+	}
 	return result.Records, nil
 }

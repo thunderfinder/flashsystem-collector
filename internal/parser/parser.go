@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"math"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -357,4 +360,79 @@ func GetField(r Record, field, defaultVal string) string {
 // Útil para comparaciones de estado (online/offline/degraded).
 func GetFieldLower(r Record, field, defaultVal string) string {
 	return strings.ToLower(GetField(r, field, defaultVal))
+}
+
+var capacityRegex = regexp.MustCompile(`^([0-9]+(?:\.[0-9]*)?)\s*([A-Za-z]+)?$`)
+
+// FormatCapacity normaliza o formatea capacidades de almacenamiento según la regla:
+// Para menos de un terabyte (< 1 TB) se expresa en GB, y para 1 TB o más en TB.
+// Si el valor no se puede interpretar numéricamente o viene vacío, se retorna intacto.
+func FormatCapacity(val string) string {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return val
+	}
+
+	m := capacityRegex.FindStringSubmatch(val)
+	if len(m) < 2 {
+		return val
+	}
+
+	num, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		return val
+	}
+
+	unit := ""
+	if len(m) > 2 {
+		unit = strings.ToUpper(strings.TrimSpace(m[2]))
+	}
+
+	// Base-2 binary units matching IBM Storage Virtualize CLI Guide (Table 3):
+	// KB: 1024, MB: 1024^2, GB: 1024^3, TB: 1024^4, PB: 1024^5
+	const (
+		bytesPerKB = 1024.0
+		bytesPerMB = 1024.0 * bytesPerKB
+		bytesPerGB = 1024.0 * bytesPerMB
+		bytesPerTB = 1024.0 * bytesPerGB
+		bytesPerPB = 1024.0 * bytesPerTB
+	)
+
+	var bytes float64
+	switch unit {
+	case "B", "":
+		bytes = num
+	case "KB", "KIB", "K":
+		bytes = num * bytesPerKB
+	case "MB", "MIB", "M":
+		bytes = num * bytesPerMB
+	case "GB", "GIB", "G":
+		bytes = num * bytesPerGB
+	case "TB", "TIB", "T":
+		bytes = num * bytesPerTB
+	case "PB", "PIB", "P":
+		bytes = num * bytesPerPB
+	default:
+		// Unknown unit, return original value
+		return val
+	}
+
+	// For sizes less than 1 TB: display in GB.
+	// For sizes 1 TB or greater: display in TB.
+	if bytes < bytesPerTB {
+		gbVal := bytes / bytesPerGB
+		return formatUnitNumber(gbVal) + "GB"
+	}
+
+	tbVal := bytes / bytesPerTB
+	return formatUnitNumber(tbVal) + "TB"
+}
+
+func formatUnitNumber(v float64) string {
+	// Round to 1 decimal place if fractional, or integer if whole
+	rounded := math.Round(v*10) / 10
+	if math.Abs(rounded-math.Round(rounded)) < 1e-9 {
+		return strconv.FormatInt(int64(rounded), 10)
+	}
+	return strconv.FormatFloat(rounded, 'f', 1, 64)
 }
