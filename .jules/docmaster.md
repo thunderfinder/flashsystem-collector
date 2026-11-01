@@ -17,3 +17,9 @@
 **Learning:** Previous notes in `instructions.md` stated that no Zabbix template was included in the repository. In fact, an official Zabbix 6.4+ YAML template exists at `template/IBM FlashSystem Collector.yaml` with preconfigured Master Item, 6 LLD discovery rules (`pools`, `drives`, `volumes`, `enclosures`, `nodes`, `ports`), JavaScript capacity byte conversions, dependent items, and customizable macros.
 
 **Action:** Document the official template import process in `README.md`, including required user macros (`{$FS_COLLECT_INTERVAL}`, `{$FS_TIMEOUT}`, `{$FS_DISCOVERY_INTERVAL}`, thresholds), eliminating the need for manual item creation in Zabbix.
+
+## 2026-11-01 - GitHub Wiki Architecture & Technical Documentation
+
+**Learning:** The project lacked an organized, comprehensive GitHub Wiki detailing the inner workings, concurrency model (goroutine semaphore), multi-tier cache TTL architecture, atomic disk operations (`rename`), stale-data fallback behavior, LLD discovery definitions across all 8 supported categories, and complete metric catalogs. Keeping documentation solely in `README.md` or unversioned markdown files causes drift and operational opacity.
+
+**Action:** Designed and created a 24-page GitHub Wiki structure (plus `_Sidebar.md`) synchronized directly in `docs/wiki/` and prepared in the GitHub Wiki repository (`thunderfinder/flashsystem-collector.wiki.git`). Validated all cross-links and structure using a dedicated validator tool (`validate_wiki.py`).
