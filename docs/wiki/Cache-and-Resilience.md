@@ -29,16 +29,21 @@ In high-frequency monitoring environments, sudden process kills (e.g., Zabbix po
 
 ```go
 // Atomic write sequence in internal/cache/cache.go
-tmpPath := filepath.Join(c.dir, fmt.Sprintf(".flashsystem_cache_%d_%s.tmp", os.Getpid(), safeKey))
-if err := os.WriteFile(tmpPath, data, 0640); err != nil {
-    return err
+dir := filepath.Dir(c.filePath)
+tmp, err := os.CreateTemp(dir, ".flashsystem_cache_*.tmp")
+if err != nil {
+    return fmt.Errorf("cache: cannot create temp file in %q: %w", dir, err)
 }
-return os.Rename(tmpPath, c.filePath)
+tmpName := tmp.Name()
+// ... write data, sync to disk, and close ...
+if err := tmp.Sync(); err != nil { ... }
+tmp.Close()
+return os.Rename(tmpName, c.filePath)
 ```
 
-1. Data is written to an ephemeral temporary file (`.flashsystem_cache_<pid>_<key>.tmp`).
-2. The operating system flushes bytes to disk.
-3. The temporary file is committed via POSIX `os.Rename`. On Linux filesystems, `rename(2)` is an atomic pointer swap, guaranteeing that the primary cache file is never partially written or corrupted.
+1. Data is serialized and written to a secure temporary file (`.flashsystem_cache_*.tmp`) created in the same directory via `os.CreateTemp` (which sets mode `0600`).
+2. `tmp.Sync()` flushes buffered bytes to persistent storage.
+3. The temporary file is committed via POSIX `os.Rename`. Because the temporary file resides on the same filesystem directory, `rename(2)` executes an atomic inode pointer swap, guaranteeing that the primary cache file is never partially written or corrupted even if the process is terminated abruptly.
 
 ---
 

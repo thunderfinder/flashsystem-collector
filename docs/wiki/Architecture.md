@@ -91,6 +91,27 @@ The codebase is organized into cleanly separated, modular Go packages under `int
 
 ---
 
+## 12 Resource Collectors & Native Commands
+
+The collector instantiates 12 specialized collectors orchestrated by `internal/collectors.Runner`:
+
+| Collector | Native IBM FlashSystem CLI Command | Output Target Key in JSON |
+| :--- | :--- | :--- |
+| **System** | `svcinfo lssystem -delim :` | `system` |
+| **Nodes** | `svcinfo lsnode -delim :` | `nodes` |
+| **Enclosures** | `svcinfo lsenclosure -delim :` | `enclosures` |
+| **Drives** | `svcinfo lsdrive -delim :` | `drives` |
+| **Pools** | `svcinfo lsmdiskgrp -bytes -delim :` | `pools` |
+| **Volumes** | `svcinfo lsvdisk -bytes -delim :` | `volumes` |
+| **Ports** | `svcinfo lsportfc -delim :` | `ports` |
+| **FlashCopy** | `svcinfo lsfcmap -delim :` | `flashcopy` |
+| **Replication** | `svcinfo lsreplicationrelationship -delim :` *(fallback: `lsrcrelationship`)* | `replication` |
+| **Performance** | `svcinfo lssystemstats -delim :` | `performance` |
+| **Batteries** | `svcinfo lsenclosurebattery -delim :` | `batteries` |
+| **PSUs** | `svcinfo lsenclosurepsu -delim :` | `psus` |
+
+---
+
 ## Data Flow Pipeline
 
 The end-to-end data pipeline follows a strict multi-stage transformation:
