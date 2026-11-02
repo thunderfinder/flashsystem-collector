@@ -23,3 +23,9 @@
 **Learning:** `microsoft/DevSkim-Action` at commit `914fa647b406c387000300b2f09bb28691be2b6d` (v1.0.14) builds its container from `mcr.microsoft.com/dotnet/sdk:7.0` and attempts `dotnet tool install --tool-path /tools Microsoft.CST.DevSkim.Cli`. The `Microsoft.CST.DevSkim.CLI` package (>= 1.0.100) dropped support for `net7.0`, causing Docker container build failures during CI runs.
 
 **Action:** In `.github/workflows/devskim.yml`, pin `microsoft/DevSkim-Action` to commit `734c6ed89671b1c7a5211ed334c79db261e3f221` (v1) or newer which targets `mcr.microsoft.com/dotnet/sdk:8.0`.
+
+## 2026-11-02 - Race Detection and Job Timeouts in Go CI Workflow
+
+**Learning:** The primary CI workflow `.github/workflows/go.yml` ran `go test -v ./...` without data race detection (`-race`), differing from the documented quality standard in `docs/wiki/Testing-and-Quality.md` and allowing subtle data races in concurrency-critical packages (`internal/cache`, `internal/zabbix`, `internal/ssh`) to pass CI unnoticed. Furthermore, the job omitted an explicit execution timeout, allowing hanging test suites or stuck builds to consume GitHub Actions runner resources indefinitely.
+
+**Action:** Ensure `.github/workflows/go.yml` executes `go test -v -race ./...` and configures `timeout-minutes: 10` on the `build` job.
