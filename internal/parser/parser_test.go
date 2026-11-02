@@ -174,6 +174,50 @@ func TestParseTabular(t *testing.T) {
 	}
 }
 
+func TestBuildRecordEdgeCases(t *testing.T) {
+	headers := []string{"h1", "h2", "h3"}
+
+	// Fewer columns than headers: remaining headers should be empty string
+	r1 := buildRecord(headers, "val1:val2")
+	if r1["h1"] != "val1" || r1["h2"] != "val2" || r1["h3"] != "" {
+		t.Errorf("unexpected r1: %#v", r1)
+	}
+
+	// Only 1 column
+	r2 := buildRecord(headers, "val1")
+	if r2["h1"] != "val1" || r2["h2"] != "" || r2["h3"] != "" {
+		t.Errorf("unexpected r2: %#v", r2)
+	}
+
+	// More colons in last column: colons in last column should be preserved
+	r3 := buildRecord(headers, "val1:val2:val3:extra:values")
+	if r3["h1"] != "val1" || r3["h2"] != "val2" || r3["h3"] != "val3:extra:values" {
+		t.Errorf("unexpected r3: %#v", r3)
+	}
+
+	// Empty headers in header list
+	headersWithEmpty := []string{"h1", "", "h3"}
+	r4 := buildRecord(headersWithEmpty, "val1:val2:val3")
+	if r4["h1"] != "val1" || r4["h3"] != "val3" {
+		t.Errorf("unexpected r4: %#v", r4)
+	}
+	if _, ok := r4[""]; ok {
+		t.Errorf("unexpected empty header key in r4: %#v", r4)
+	}
+
+	// Empty line
+	r5 := buildRecord(headers, "")
+	if r5["h1"] != "" || r5["h2"] != "" || r5["h3"] != "" {
+		t.Errorf("unexpected r5: %#v", r5)
+	}
+
+	// Empty headers slice
+	r6 := buildRecord(nil, "val1:val2")
+	if len(r6) != 0 {
+		t.Errorf("expected empty record for nil headers, got %#v", r6)
+	}
+}
+
 func TestParseEmptyAndErrors(t *testing.T) {
 	testCases := []struct {
 		input  string
