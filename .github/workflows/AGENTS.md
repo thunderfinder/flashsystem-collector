@@ -1,46 +1,37 @@
 # AGENTS.md — .github/workflows Component Instructions
 
-This directory contains GitHub Actions CI/CD workflows for building, testing, linting, and security scanning `flashsystem-collector`.
+This directory contains GitHub Actions workflows defining the Continuous Integration (CI), code quality, and security scanning pipelines for `flashsystem-collector`.
 
 ---
 
-## Workflows Overview
+## Technical Responsibilities
 
-The repository defines 10 GitHub Actions workflows:
-
-### Build, Test & Lint
-- `go.yml`: Compiles Go code across supported setups, runs `go test ./...`, and validates static Linux AMD64 build.
-- `lint.yml`: Code quality checks, running `deadcode` from `golang.org/x/tools/cmd/deadcode`.
-
-### Security, Supply Chain & Static Analysis
-- `codeql.yml`: GitHub CodeQL Advanced static analysis for Go code.
-- `dependency-review.yml`: Scans dependency manifest files that change in pull requests against known vulnerabilities.
-- `devskim.yml`: Microsoft DevSkim security linter.
-- `endorlabs.yml`: Endor Labs dependency and supply chain security scanner.
-- `go-ossf-slsa3-publish.yml`: SLSA Build Level 3 provenance generator for Go release binaries using `slsa-github-generator`.
-- `semgrep.yml`: Semgrep SAST scanning with default rules.
-- `sonarqube.yml`: SonarQube code quality and vulnerability scan (triggered on push/PR).
-- `veracode.yml`: Veracode static analysis pipeline scan converting results to SARIF.
+- **Build & Test Pipelines**: `go.yml` enforces compilation, module cache, `go vet`, and test suites.
+- **Linters**: `lint.yml` executes `deadcode`, `actionlint` (workflow linter), and `zizmor` (GitHub Actions security linter).
+- **Security Scanners**: Workflows for CodeQL, DevSkim, Semgrep, Dependency Review, SonarQube, Endor Labs, and Veracode.
+- **Supply-Chain Security**: `go-ossf-slsa3-publish.yml` generates Level 3 SLSA provenance for release binaries.
 
 ---
 
-## Engineering & Maintenance Rules
+## Engineering Rules & Toolchain Constraints (PipelineFixer Learnings)
 
-1. **Go Version Alignment**:
-   - The Go toolchain version across workflow steps (e.g., `actions/setup-go@v5`) must align with `go.mod` (Go `1.25.0`).
-2. **Least Privilege Permissions**:
-   - Workflows must declare explicit top-level or job-level `permissions:` (e.g., `contents: read`, `security-events: write`, `id-token: write`).
-3. **Third-Party Secret & Variable Guards**:
-   - Workflows requiring external third-party services (such as `sonarqube.yml`, `endorlabs.yml`, and `veracode.yml`) must include appropriate job-level or step-level conditions (such as checking if secrets or environment variables are non-empty) to prevent pipeline failures in forks or open-source environments where secrets are not configured.
-4. **Supply Chain Integrity**:
-   - Pin external GitHub Actions with verified version tags (e.g., `@v4`, `@v5`) or immutable commit SHAs.
-   - Maintain reproducible builds for release pipelines using SLSA standards.
-5. **No Functional Application Changes**:
-   - Do not weaken CI checks to bypass linter warnings or security scanner findings.
+1. **Go Version Consistency**:
+   - `go-version` in `go.yml` and `go-ossf-slsa3-publish.yml` must explicitly match Go version specified in `go.mod` (`1.25` / `1.25.0`).
+2. **zizmor Workflow Linter Configuration**:
+   - Uses `.github/zizmor.yml` (`unpinned-uses: ref-pin` and `artipacked: false`) to prevent CI failures from tag-pinned actions and read-only checkout tokens.
+3. **DevSkim Action Pinning**:
+   - `microsoft/DevSkim-Action` must pin to commit `734c6ed89671b1c7a5211ed334c79db261e3f221` (v1) or newer supporting .NET 8 SDK, as older releases pinned to .NET 7 fail container build.
+4. **Conditional Secret Handling**:
+   - Optional third-party security workflows (SonarQube, Endor Labs, Veracode) must include step- or job-level secret conditionals (`if: env.SONAR_TOKEN != ''`) to prevent workflow failure when secrets are not configured in forks or public PRs.
+5. **No Secret Leaks**:
+   - Never print GitHub secrets, tokens, or private keys to workflow job logs.
+6. **No Weakening Checks**:
+   - Never disable or weaken CI checks to bypass linter warnings or security scanner findings.
 
 ---
 
 ## Validation Guidelines
 
 - Review any modified workflow using `git diff` and check YAML syntax formatting.
+- Lint workflows locally using `actionlint` if installed.
 - Confirm required secrets and environment variables are documented clearly.
