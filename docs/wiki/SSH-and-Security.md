@@ -47,17 +47,38 @@ sudo chmod 0600 /etc/zabbix/ssh/flashsystem_key
 
 By default, the collector protects against Machine-In-The-Middle (MITM) attacks and DNS/IP spoofing by strictly verifying the storage controller's SSH host key.
 
-### Secure Default Behavior
-`internal/ssh/client.go` defaults to `InsecureHostKey: false`. The collector requires a valid `known_hosts` file specified via `-known-hosts` or `FS_KNOWN_HOSTS`. If neither `FS_KNOWN_HOSTS` nor `FS_INSECURE=true` is set, the collector aborts:
+### Secure Default Behavior & Resolution Order
+`internal/ssh/client.go` defaults to `InsecureHostKey: false`. The collector builds an `ssh.HostKeyCallback` using `golang.org/x/crypto/ssh/knownhosts` with the following resolution order:
+
+1. **Insecure Mode (`FS_INSECURE=true`)**: If explicitly enabled, returns `ssh.InsecureIgnoreHostKey()`.
+2. **Explicit Known Hosts (`FS_KNOWN_HOSTS` / `-known-hosts`)**: Validates that the file is a regular file and enforces strict POSIX write permissions before parsing with `knownhosts.New()`.
+3. **Automatic Fallback (`~/.ssh/known_hosts`)**: If `FS_KNOWN_HOSTS` is empty, attempts to locate and validate `~/.ssh/known_hosts` for the executing system user (`zabbix`).
+4. **Strict Error**: If neither `FS_INSECURE=true` nor an accessible, valid `known_hosts` file exists, the collector aborts:
 ```text
 SSH host key verification not configured: specify -known-hosts or FS_KNOWN_HOSTS
 ```
+
+### Host Key File Integrity and Permission Enforcement
+To prevent unauthorized users or compromised processes on a shared monitoring server from modifying trusted host keys to intercept FlashSystem monitoring traffic, `internal/config/config.go` and `internal/ssh/client.go` enforce strict integrity checks on `known_hosts`:
+
+```go
+// POSIX write permission check for known_hosts
+if runtime.GOOS != "windows" && info.Mode().Perm()&0022 != 0 {
+    return fmt.Errorf("known_hosts file %q has insecure permissions (%04o): "+
+        "must not be writable by group or others (chmod 644 or 600 required)",
+        path, info.Mode().Perm())
+}
+```
+
+- **Regular File Check**: Symlinks, directories, FIFO pipes, or device files are rejected (`!info.Mode().IsRegular()`).
+- **Permission Check**: Group and other write permissions are strictly forbidden (`perm & 0022 != 0`). Only `0644` (world-readable, owner-writable) or `0600` (strictly owner-only) are allowed. Permissions like `0664` or `0666` cause immediate startup failure.
 
 ### Setting Up `known_hosts` in Production
 Use `ssh-keyscan` to capture the storage controller's public host key:
 ```bash
 sudo -u zabbix ssh-keyscan -p 22 <FLASHYSTEM_IP> > /etc/zabbix/ssh/known_hosts
 sudo chmod 0644 /etc/zabbix/ssh/known_hosts
+sudo chown zabbix:zabbix /etc/zabbix/ssh/known_hosts
 ```
 
 In your `/etc/zabbix/flashsystem/env` file, configure:
@@ -121,6 +142,6 @@ Any attempt to run destructive or modifying commands (e.g., `svctask rmvdisk` or
 | **Authentication** | Enforce SSH key-based auth (forbid passwords) | `FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key` |
 | **File Permissions** | Private key restricted to `0600` | `chmod 0600 /etc/zabbix/ssh/flashsystem_key` |
 | **Config Security** | Environment file restricted to `0640` | `chmod 0640 /etc/zabbix/flashsystem/env` |
-| **Host Verification**| Populate and verify `known_hosts` | `FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts` |
+| **Host Verification**| Populate and verify `known_hosts` (mode `0644`/`0600`) | `FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts` |
 | **Process Locking** | Dedicated non-overlapping flock locks | `/var/lock/flashsystem/` (mode `0755`) |
 | **Cache Protection** | Cache directory protected | `/var/tmp/` (mode `1777` with sticky bit) |

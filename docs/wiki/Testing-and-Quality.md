@@ -53,7 +53,13 @@ go test -v ./internal/config
 ### 3. Config Validation Testing (`internal/config/config_test.go`)
 - Verifies flag overriding of environment variables.
 - Asserts that missing authentication yields an error.
-- Asserts that insecure file permissions (`0644`) on private key files trigger an immediate security error on non-Windows systems.
+- Asserts that insecure file permissions (`0644`, `0660`) on private key files trigger an immediate security error on non-Windows systems (`chmod 0600` required).
+- Asserts that `known_hosts` files must be regular files and enforce strict POSIX write permissions (`0644` or `0600` accepted; `0666`, `0664` rejected).
+
+### 4. SSH Client Verification Testing (`internal/ssh/client_test.go`)
+- Uses an in-memory loopback SSH server to test authentication and command execution.
+- Validates host key callback creation with `knownhosts.New`.
+- Asserts that directory paths or group/world-writable `known_hosts` files trigger security errors.
 
 ---
 

@@ -374,6 +374,8 @@ The collector executes the following native CLI commands via `svcinfo` using col
 | Symptom | Probable Cause | Diagnostic Command | Corrective Action |
 |---|---|---|---|
 | `SSH host key verification not configured` | Neither `FS_KNOWN_HOSTS` nor `FS_INSECURE` is specified. | Check `/etc/zabbix/flashsystem/env` | Run `ssh-keyscan` to populate `/etc/zabbix/ssh/known_hosts` and set `FS_KNOWN_HOSTS`. |
+| `known_hosts file ... has insecure permissions` | `known_hosts` is group- or world-writable (e.g., `0664`, `0666`). | `ls -la /etc/zabbix/ssh/known_hosts` | Enforce non-writable permissions: `chmod 644 /etc/zabbix/ssh/known_hosts` (or `600`). |
+| `known_hosts file ... is not a regular file` | Path points to a directory, symlink, or device node. | `ls -ld /etc/zabbix/ssh/known_hosts` | Ensure the path is a standard regular file. |
 | `Host key mismatch` / `known_hosts: key mismatch` | FlashSystem controller reinstalled or management IP moved. | `ssh-keygen -l -f /etc/zabbix/ssh/known_hosts` | Refresh host key entry using `ssh-keyscan -p 22 <IP> > /etc/zabbix/ssh/known_hosts`. |
 | `SSH key file not accessible` | Permission denied or key missing. | `ls -la /etc/zabbix/ssh/flashsystem_key` | Verify ownership `zabbix:zabbix` and mode `chmod 600`. |
 | `SSH authentication required` | Neither `FS_KEYFILE` nor `FS_PASSWORD` is configured. | `sudo -u zabbix env \| grep FS_` | Ensure `/etc/zabbix/flashsystem/env` defines `FS_KEYFILE` or `FS_PASSWORD`. |
