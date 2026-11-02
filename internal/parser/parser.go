@@ -277,25 +277,40 @@ func buildRecord(headers []string, line string) Record {
 	// Pre-allocating map capacity matching header count avoids incremental map rehashes.
 	record := make(Record, len(headers))
 
-	// Para todos los campos excepto el último, usamos Split con límite.
-	// Para el último campo, tomamos el resto de la línea para preservar
-	// valores que contengan ":".
-	//
-	// Estrategia: split con límite = len(headers).
-	// strings.SplitN(s, sep, n) retorna máximo n substrings,
-	// con el último conteniendo el resto no spliteado.
-	parts := strings.SplitN(line, delim, len(headers))
+	// En lugar de strings.SplitN(line, delim, len(headers)) que aloca un []string
+	// en el heap para cada fila, escaneamos las posiciones del delimitador in-place
+	// evitando allocations intermedias por fila.
+	rest := line
+	lastIdx := len(headers) - 1
 
 	for i, header := range headers {
 		if header == "" {
+			// Saltar extracción manteniendo sincronización del scanner
+			if i < lastIdx && rest != "" {
+				idx := strings.Index(rest, delim)
+				if idx >= 0 {
+					rest = rest[idx+len(delim):]
+				} else {
+					rest = ""
+				}
+			}
 			continue
 		}
 
-		if i < len(parts) {
-			record[header] = strings.TrimSpace(parts[i])
+		if i == lastIdx {
+			// El último campo preserva cualquier delimitador restante.
+			record[header] = strings.TrimSpace(rest)
+			break
+		}
+
+		idx := strings.Index(rest, delim)
+		if idx >= 0 {
+			record[header] = strings.TrimSpace(rest[:idx])
+			rest = rest[idx+len(delim):]
 		} else {
-			// Columna ausente en esta fila.
-			record[header] = ""
+			// No quedan más delimitadores en la fila
+			record[header] = strings.TrimSpace(rest)
+			rest = ""
 		}
 	}
 
