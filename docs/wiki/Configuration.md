@@ -16,7 +16,7 @@ Any parameter passed directly as a command-line flag will override the correspon
 | `-user` | `FS_USER` | *(empty)* | String | **Required**. FlashSystem user account (recommended: `Monitor` role). |
 | `-keyfile` | `FS_KEYFILE` | *(empty)* | File path | Path to OpenSSH private key file. Must have `chmod 0600` permissions. Mutually exclusive with `-password`. |
 | `-password` | `FS_PASSWORD` | *(empty)* | String | Storage user password. **Insecure** (visible in process lists). Mutually exclusive with `-keyfile`. |
-| `-known-hosts`| `FS_KNOWN_HOSTS` | *(empty)* | File path | Path to `known_hosts` file for cryptographic SSH host-key validation. |
+| `-known-hosts`| `FS_KNOWN_HOSTS` | *(empty)* | File path | Path to `known_hosts` file for cryptographic SSH host-key validation. Must be a regular file with `chmod 0644` or `0600` permissions (group/other write forbidden). |
 | `-insecure` | `FS_INSECURE` | `false` | Boolean (`true`, `false`, `1`, `0`) | Disables SSH host-key checking. **Permitted only in isolated lab environments**. |
 | `-cache-dir` | `FS_CACHE_DIR` | `/var/tmp` | Directory path | Writable directory storing JSON cache files. Validated on startup with a write probe. |
 | `-metrics-ttl`| `FS_METRICS_TTL` | `5m` | Duration ($\ge 1\text{s}$, e.g. `5m`, `300s`) | Cache validity duration for general inventory, nodes, pools, and volumes. |
@@ -78,8 +78,14 @@ During initialization, the collector executes rigorous validation logic:
          return fmt.Errorf("SSH key file %q has insecure permissions (%04o): must not be accessible by group or others (chmod 600 required)", cfg.SSH.KeyFile, info.Mode().Perm())
      }
      ```
-3. **Host Key Security**:
-   - If `InsecureHostKey` is `false` and `FS_KNOWN_HOSTS` is empty: returns `"SSH host key verification not configured"`.
+3. **Host Key Security & `known_hosts` Permissions**:
+   - If `InsecureHostKey` is `false` and `FS_KNOWN_HOSTS` is empty, attempts to fall back to `~/.ssh/known_hosts`. If no valid `known_hosts` file is found, returns `"SSH host key verification not configured: specify -known-hosts or FS_KNOWN_HOSTS"`.
+   - If a `known_hosts` file is specified, `internal/config/config.go` verifies that it is a regular file and enforces that group/other write permissions are disabled (`perm & 0022 == 0`, e.g., `chmod 0644` or `0600`):
+     ```go
+     if runtime.GOOS != "windows" && info.Mode().Perm()&0022 != 0 {
+         return fmt.Errorf("known_hosts file %q has insecure permissions (%04o): must not be writable by group or others (chmod 644 or 600 required)", cfg.SSH.KnownHostsFile, info.Mode().Perm())
+     }
+     ```
 4. **Cache Directory Validation**:
    - Checks that `CacheDir` exists, is a directory, and creates a transient file `.flashsystem_write_test_*` to verify write permissions before accepting the path.
 

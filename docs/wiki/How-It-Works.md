@@ -85,16 +85,18 @@ The SSH client (`internal/ssh/client.go`) encapsulates `golang.org/x/crypto/ssh`
 
 ### Connection Handshake
 - Sets a connection dial timeout governed by `FS_DIAL_TIMEOUT` (default `10s`).
-- Negotiates SSH host key verification:
-  - If `FS_KNOWN_HOSTS` is defined, keys are cryptographically validated using `ssh.NewPublicKeyAuthMethod()`.
-  - If neither `FS_KNOWN_HOSTS` nor `FS_INSECURE` is supplied, connection is refused.
+- Negotiates SSH host key verification via `ssh.HostKeyCallback`:
+  - If `FS_INSECURE=true`, verification is skipped via `ssh.InsecureIgnoreHostKey()` (lab environments only).
+  - If `FS_KNOWN_HOSTS` is configured, validates that the file is regular and enforces non-writable permissions (`perm & 0022 == 0`), parsing via `knownhosts.New()`.
+  - If unset, automatically falls back to validating `~/.ssh/known_hosts` if present.
+  - If no valid host key database is configured and insecure mode is disabled, connection is refused with `"SSH host key verification not configured"`.
 
 ### Command Execution Lifecycle
 When a collector invokes `client.Run(cmd)`:
 1. Opens an individual SSH `Session` from the underlying authenticated SSH connection.
 2. Directs `session.Stdout` and `session.Stderr` into memory buffers.
 3. Spawns an execution timer governed by `FS_CMD_TIMEOUT` (default `30s`).
-4. If the timer expires before the command completes, `session.Signal(ssh.SIGKILL)` is dispatched and the session is closed, returning an explicit context deadline exceeded error.
+4. If the timer expires before the command completes, `session.Signal(ssh.SIGTERM)` is dispatched and the session is closed, returning an explicit command timeout error.
 5. Captures and trims stdout output.
 
 ---

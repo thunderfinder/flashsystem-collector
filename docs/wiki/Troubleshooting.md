@@ -12,6 +12,7 @@ flowchart TD
     CheckLog --> ErrorType{Identify Error Category}
 
     ErrorType -- "SSH host key verification not configured" --> FixKnownHosts[Run ssh-keyscan and set FS_KNOWN_HOSTS]
+    ErrorType -- "known_hosts file has insecure permissions" --> FixKnownHostsPerms[chmod 0644 or 0600 on FS_KNOWN_HOSTS]
     ErrorType -- "SSH key file has insecure permissions" --> FixPerms[chmod 0600 on FS_KEYFILE]
     ErrorType -- "command timed out after 30s" --> IncrTimeout[Increase FS_CMD_TIMEOUT or check network]
     ErrorType -- "empty response from lssystemstats" --> StartStats[Execute svctask startstats on FlashSystem]
@@ -41,7 +42,23 @@ flowchart TD
 
 ---
 
-### Symptom 2: `SSH key file ... has insecure permissions (0644)`
+### Symptom 2: `known_hosts file ... has insecure permissions (0666)` or `is not a regular file`
+- **Probable Cause**: The `known_hosts` file configured in `FS_KNOWN_HOSTS` is group- or world-writable (e.g., `0664`, `0666`), or points to a non-regular file (directory, symlink, or device).
+- **Diagnostic Command**:
+  ```bash
+  ls -l $(grep FS_KNOWN_HOSTS /etc/zabbix/flashsystem/env | cut -d= -f2)
+  ```
+- **Resolution**:
+  Enforce non-writable permissions for group and others (`0644` or `0600`):
+  ```bash
+  sudo chown zabbix:zabbix /etc/zabbix/ssh/known_hosts
+  sudo chmod 0644 /etc/zabbix/ssh/known_hosts
+  ```
+  If the path is a symlink or directory, replace it with a regular file.
+
+---
+
+### Symptom 3: `SSH key file ... has insecure permissions (0644)`
 - **Probable Cause**: The private key specified in `FS_KEYFILE` is accessible by group or others, violating security validation.
 - **Diagnostic Command**:
   ```bash
@@ -56,7 +73,7 @@ flowchart TD
 
 ---
 
-### Symptom 3: `empty response from lssystemstats`
+### Symptom 4: `empty response from lssystemstats`
 - **Probable Cause**: Background statistics collection is disabled on the IBM FlashSystem cluster. Performance counters (`read_io`, `write_io`, `cpu_pc`, etc.) return blank.
 - **Diagnostic Command**:
   Query the cluster statistics status directly:
@@ -76,7 +93,7 @@ flowchart TD
 
 ---
 
-### Symptom 4: Zabbix Item Status is `Unsupported` (Script Timeout)
+### Symptom 5: Zabbix Item Status is `Unsupported` (Script Timeout)
 - **Probable Cause**: Zabbix server or proxy poller killed the external script because execution took longer than the default 3-second or 4-second poller timeout.
 - **Diagnostic Command**:
   Inspect `/var/log/zabbix/zabbix_server.log`:
@@ -98,7 +115,7 @@ flowchart TD
 
 ---
 
-### Symptom 5: Discovery Returns `{"data":[]}`
+### Symptom 6: Discovery Returns `{"data":[]}`
 - **Probable Cause**:
   1. Invalid category argument specified.
   2. The storage cluster has no items of that type configured (e.g., no FlashCopy mappings).
@@ -115,7 +132,7 @@ flowchart TD
 
 ---
 
-### Symptom 6: Output Truncation Warning (`status.truncated_at`)
+### Symptom 7: Output Truncation Warning (`status.truncated_at`)
 - **Probable Cause**: The storage array contains more volumes or drives than permitted by `-max-volumes` or `-max-drives`, or total payload size exceeded `-max-json-bytes`.
 - **Diagnostic Command**:
   Check for truncation markers in output JSON:
