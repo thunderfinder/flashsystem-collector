@@ -3,11 +3,18 @@ package ssh
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -223,5 +230,378 @@ func TestClientCloseNil(t *testing.T) {
 	c := &Client{commandTimeout: 5 * time.Second}
 	if err := c.Close(); err != nil {
 		t.Fatalf("expected nil error on Close() when conn is nil, got: %v", err)
+	}
+}
+
+// setupLoopbackSSH spins up an in-memory loopback SSH server for testing Client New, Run, Ping, and timeouts.
+func setupLoopbackSSH(t *testing.T, handler func(cmd string) (stdout string, stderr string, exitCode uint32, delay time.Duration)) (host string, port int, cleanup func()) {
+	t.Helper()
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate host key: %v", err)
+	}
+	signer, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		t.Fatalf("failed to create signer: %v", err)
+	}
+
+	serverConfig := &ssh.ServerConfig{
+		PasswordCallback: func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+			if conn.User() == "gooduser" && string(password) == "goodpass" {
+				return nil, nil
+			}
+			return nil, errors.New("auth failed")
+		},
+	}
+	serverConfig.AddHostKey(signer)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen on loopback: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	stopped := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			tcpConn, err := listener.Accept()
+			if err != nil {
+				select {
+				case <-stopped:
+					return
+				default:
+					return
+				}
+			}
+
+			go func(c net.Conn) {
+				sshConn, chans, reqs, err := ssh.NewServerConn(c, serverConfig)
+				if err != nil {
+					return
+				}
+				go ssh.DiscardRequests(reqs)
+
+				for newChannel := range chans {
+					if newChannel.ChannelType() != "session" {
+						_ = newChannel.Reject(ssh.UnknownChannelType, "unknown channel type")
+						continue
+					}
+					ch, requests, err := newChannel.Accept()
+					if err != nil {
+						continue
+					}
+
+					go func(channel ssh.Channel, reqs <-chan *ssh.Request) {
+						defer channel.Close()
+						for req := range reqs {
+							switch req.Type {
+							case "exec":
+								if len(req.Payload) < 4 {
+									_ = req.Reply(false, nil)
+									return
+								}
+								cmdLen := binary.BigEndian.Uint32(req.Payload[:4])
+								cmd := string(req.Payload[4 : 4+cmdLen])
+								_ = req.Reply(true, nil)
+
+								stdout, stderr, exitCode, delay := handler(cmd)
+								if delay > 0 {
+									time.Sleep(delay)
+								}
+								if stdout != "" {
+									_, _ = io.WriteString(channel, stdout)
+								}
+								if stderr != "" {
+									_, _ = io.WriteString(channel.Stderr(), stderr)
+								}
+
+								status := struct{ Status uint32 }{exitCode}
+								_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(&status))
+								return
+							case "signal":
+								// Acknowledge remote signals such as SIGTERM
+								_ = req.Reply(true, nil)
+							default:
+								_ = req.Reply(false, nil)
+							}
+						}
+					}(ch, requests)
+				}
+				_ = sshConn.Close()
+			}(tcpConn)
+		}
+	}()
+
+	host, portStr, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		t.Fatalf("failed to split host port: %v", err)
+	}
+	portInt, _ := strconv.Atoi(portStr)
+
+	cleanup = func() {
+		close(stopped)
+		_ = listener.Close()
+		wg.Wait()
+	}
+
+	return host, portInt, cleanup
+}
+
+func TestClientNewAndPing(t *testing.T) {
+	handler := func(cmd string) (string, string, uint32, time.Duration) {
+		if strings.Contains(cmd, "svcinfo lssystem") {
+			return "id 0\n", "", 0, 0
+		}
+		return "", "unknown command", 1, 0
+	}
+
+	host, port, cleanup := setupLoopbackSSH(t, handler)
+	defer cleanup()
+
+	t.Run("SuccessfulConnectionAndPing", func(t *testing.T) {
+		client, err := New(ClientConfig{
+			Host:            host,
+			Port:            port,
+			User:            "gooduser",
+			Password:        "goodpass",
+			DialTimeout:     2 * time.Second,
+			CommandTimeout:  2 * time.Second,
+			InsecureHostKey: true,
+		})
+		if err != nil {
+			t.Fatalf("expected New() to succeed, got: %v", err)
+		}
+		defer client.Close()
+
+		if err := client.Ping(); err != nil {
+			t.Fatalf("expected Ping() to succeed, got: %v", err)
+		}
+	})
+
+	t.Run("AuthenticationFailure", func(t *testing.T) {
+		_, err := New(ClientConfig{
+			Host:            host,
+			Port:            port,
+			User:            "gooduser",
+			Password:        "wrongpass",
+			DialTimeout:     2 * time.Second,
+			CommandTimeout:  2 * time.Second,
+			InsecureHostKey: true,
+		})
+		if err == nil {
+			t.Fatal("expected authentication failure error, got nil")
+		}
+		if !strings.Contains(err.Error(), "ssh handshake") {
+			t.Fatalf("expected 'ssh handshake' in error, got: %v", err)
+		}
+	})
+
+	t.Run("TCPDialFailure", func(t *testing.T) {
+		// Pick an unused local port
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatalf("failed to listen: %v", err)
+		}
+		_, pStr, _ := net.SplitHostPort(l.Addr().String())
+		unusedPort, _ := strconv.Atoi(pStr)
+		_ = l.Close()
+
+		_, err = New(ClientConfig{
+			Host:            "127.0.0.1",
+			Port:            unusedPort,
+			User:            "gooduser",
+			Password:        "goodpass",
+			DialTimeout:     200 * time.Millisecond,
+			CommandTimeout:  200 * time.Millisecond,
+			InsecureHostKey: true,
+		})
+		if err == nil {
+			t.Fatal("expected TCP dial failure error, got nil")
+		}
+		if !strings.Contains(err.Error(), "tcp dial") {
+			t.Fatalf("expected 'tcp dial' in error, got: %v", err)
+		}
+	})
+
+	t.Run("PingFailsOnCommandError", func(t *testing.T) {
+		failHandler := func(cmd string) (string, string, uint32, time.Duration) {
+			return "", "permission denied", 1, 0
+		}
+		fHost, fPort, fCleanup := setupLoopbackSSH(t, failHandler)
+		defer fCleanup()
+
+		client, err := New(ClientConfig{
+			Host:            fHost,
+			Port:            fPort,
+			User:            "gooduser",
+			Password:        "goodpass",
+			DialTimeout:     2 * time.Second,
+			CommandTimeout:  2 * time.Second,
+			InsecureHostKey: true,
+		})
+		if err != nil {
+			t.Fatalf("unexpected New() error: %v", err)
+		}
+		defer client.Close()
+
+		err = client.Ping()
+		if err == nil {
+			t.Fatal("expected Ping() to fail when command fails, got nil")
+		}
+		if !strings.Contains(err.Error(), "SSH ping failed") {
+			t.Fatalf("expected 'SSH ping failed' in error, got: %v", err)
+		}
+	})
+}
+
+func TestClientRunCommand(t *testing.T) {
+	handler := func(cmd string) (string, string, uint32, time.Duration) {
+		switch cmd {
+		case "svcinfo lssystem -delim :":
+			return "id:0\nname:Cluster0\n", "", 0, 0
+		case "svcinfo fails_with_stderr":
+			return "", "CMMVC5753E command failed", 1, 0
+		case "svcinfo fails_without_stderr":
+			return "", "", 2, 0
+		default:
+			return "", "unknown", 127, 0
+		}
+	}
+
+	host, port, cleanup := setupLoopbackSSH(t, handler)
+	defer cleanup()
+
+	client, err := New(ClientConfig{
+		Host:            host,
+		Port:            port,
+		User:            "gooduser",
+		Password:        "goodpass",
+		DialTimeout:     2 * time.Second,
+		CommandTimeout:  2 * time.Second,
+		InsecureHostKey: true,
+	})
+	if err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer client.Close()
+
+	t.Run("SuccessfulRun", func(t *testing.T) {
+		out, err := client.Run("svcinfo lssystem -delim :")
+		if err != nil {
+			t.Fatalf("expected Run() to succeed, got: %v", err)
+		}
+		if !strings.Contains(out, "name:Cluster0") {
+			t.Fatalf("unexpected command output: %q", out)
+		}
+	})
+
+	t.Run("FailedRunWithStderr", func(t *testing.T) {
+		_, err := client.Run("svcinfo fails_with_stderr")
+		if err == nil {
+			t.Fatal("expected error on failed command, got nil")
+		}
+		if !strings.Contains(err.Error(), "CMMVC5753E command failed") {
+			t.Fatalf("expected stderr in error message, got: %v", err)
+		}
+	})
+
+	t.Run("FailedRunWithoutStderr", func(t *testing.T) {
+		_, err := client.Run("svcinfo fails_without_stderr")
+		if err == nil {
+			t.Fatal("expected error on failed command, got nil")
+		}
+		if !strings.Contains(err.Error(), "command \"svcinfo fails_without_stderr\" failed") {
+			t.Fatalf("expected command failure message, got: %v", err)
+		}
+	})
+}
+
+func TestClientCommandTimeout(t *testing.T) {
+	handler := func(cmd string) (string, string, uint32, time.Duration) {
+		if cmd == "slow_command" {
+			return "done\n", "", 0, 400 * time.Millisecond
+		}
+		return "fast\n", "", 0, 0
+	}
+
+	host, port, cleanup := setupLoopbackSSH(t, handler)
+	defer cleanup()
+
+	client, err := New(ClientConfig{
+		Host:            host,
+		Port:            port,
+		User:            "gooduser",
+		Password:        "goodpass",
+		DialTimeout:     2 * time.Second,
+		CommandTimeout:  100 * time.Millisecond,
+		InsecureHostKey: true,
+	})
+	if err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer client.Close()
+
+	_, err = client.Run("slow_command")
+	if err == nil {
+		t.Fatal("expected command timeout error, got nil")
+	}
+	if !strings.Contains(err.Error(), "timed out after") {
+		t.Fatalf("expected 'timed out after' in error, got: %v", err)
+	}
+}
+
+func TestClientConcurrentRun(t *testing.T) {
+	handler := func(cmd string) (string, string, uint32, time.Duration) {
+		return fmt.Sprintf("result_of_%s\n", cmd), "", 0, 10 * time.Millisecond
+	}
+
+	host, port, cleanup := setupLoopbackSSH(t, handler)
+	defer cleanup()
+
+	client, err := New(ClientConfig{
+		Host:            host,
+		Port:            port,
+		User:            "gooduser",
+		Password:        "goodpass",
+		DialTimeout:     2 * time.Second,
+		CommandTimeout:  2 * time.Second,
+		InsecureHostKey: true,
+	})
+	if err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer client.Close()
+
+	const numWorkers = 10
+	var wg sync.WaitGroup
+	errs := make([]error, numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			cmd := fmt.Sprintf("cmd_%d", workerID)
+			out, err := client.Run(cmd)
+			if err != nil {
+				errs[workerID] = err
+				return
+			}
+			expected := fmt.Sprintf("result_of_%s\n", cmd)
+			if out != expected {
+				errs[workerID] = fmt.Errorf("worker %d: expected %q, got %q", workerID, expected, out)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("worker %d encountered error: %v", i, err)
+		}
 	}
 }

@@ -14,3 +14,12 @@
 **Learning:** `collectors.Runner` coordinates concurrent execution across collectors using a channel-based semaphore (`make(chan struct{}, MaxConcurrent)`) and manages cache lifecycle (valid hit, cache miss, corrupted entry fallback, and stale entry fallback upon SSH failure). Prior to this update, `collectors.Runner` and all 12 individual collector `Collect` functions had 0% unit and integration test coverage (overall package coverage was 22.0%), leaving concurrent semaphore handling, stale cache fallback semantics, and command-not-found fallback logic (e.g., replication v8.7+ `lsreplicationrelationship` falling back to `lsrcrelationship` on `CMMVC5753E`) untested against real SSH transport interfaces.
 
 **Action:** Test collector concurrency and session management using an in-memory loopback SSH server (`golang.org/x/crypto/ssh` on `127.0.0.1:0`) and mock collectors. Always run tests with `-race` to ensure that semaphore acquisition, stale entry retrieval from disk cache, and concurrent results map writes remain thread-safe.
+
+## 2026-05-20 - SSH Client Session Multiplexing, Cancellation Signals, and Failure Isolation
+
+**Learning:** `internalssh.Client` wraps an active `*ssh.Client` and implements per-command timeouts with `context.WithTimeout`, asynchronous signal dispatching (`session.Signal(ssh.SIGTERM)`), and separate stdout/stderr capture on newly multiplexed channel sessions. Previously, `internal/ssh` lacked unit test coverage for its connection lifecycle (`New`, `Run`, `Ping`, `Close`), having only 39.8% coverage limited to config callback builders. In particular:
+1. Command execution timeout cancellation must safely dispatch `ssh.SIGTERM` across the SSH session channel without blocking or deadlocking when the remote session hangs.
+2. Stderr output must be reliably appended to the returned error upon non-zero exit codes to ensure diagnostic errors like `CMMVC5753E` are available to callers and parsers without leaking credentials.
+3. Concurrent calls to `Run()` across multiple worker goroutines multiplexed over the same underlying TCP connection must execute without race conditions or cross-talk between session buffers.
+
+**Action:** Maintain loopback SSH server test fixtures (`golang.org/x/crypto/ssh` on `127.0.0.1:0`) directly within `internal/ssh/client_test.go` to test SSH handshake failures, TCP dial failures, signal requests, timeout cancellations, and concurrent session multiplexing deterministically under race detection (`-race`).
