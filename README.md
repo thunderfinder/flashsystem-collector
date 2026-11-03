@@ -299,9 +299,17 @@ Adjust the following template macros under the host's **Macros** tab if custom t
 | `{$FS_DISCOVERY_INTERVAL}` | `4h` | Polling interval for LLD rules. Matches `FS_DISCOVERY_TTL`. |
 | `{$FS_POOL_WARN_PCT}` | `80` | Pool utilization warning threshold percentage (0–100). |
 | `{$FS_POOL_CRIT_PCT}` | `90` | Pool utilization disaster/critical threshold percentage (0–100). |
-| `{$FS_LATENCY_READ_WARN}` | `10` | Average read latency warning threshold in milliseconds. |
-| `{$FS_LATENCY_WRITE_WARN}` | `10` | Average write latency warning threshold in milliseconds. |
+| `{$FS_LATENCY_READ_WARN}` | `2` | Average read latency warning threshold in milliseconds (tuned for flash arrays; IBM Redbook SG248543). |
+| `{$FS_LATENCY_READ_CRIT}` | `10` | Critical read latency threshold in milliseconds. |
+| `{$FS_LATENCY_WRITE_WARN}` | `5` | Average write latency warning threshold in milliseconds (tuned for flash arrays). |
+| `{$FS_LATENCY_WRITE_CRIT}` | `50` | Critical write latency threshold in milliseconds (> 50ms indicates storage controller overload). |
 | `{$FS_CPU_WARN}` | `80` | Node canister CPU utilization warning threshold percentage. |
+| `{$FS_WRITE_CACHE_WARN}` | `70` | Write cache utilization warning threshold percentage (IBM Redbook SG248543 cap. 9). |
+| `{$FS_WRITE_CACHE_CRIT}` | `85` | Critical write cache utilization threshold percentage (> 85% indicates severe destage degradation risk). |
+| `{$FS_TEMP_WARN}` | `35` | Ambient temperature warning threshold in Celsius (°C). |
+| `{$FS_TEMP_CRIT}` | `40` | Ambient temperature critical threshold in Celsius (°C). |
+| `{$FS_BATTERY_HEALTH_WARN}` | `70` | Battery health/charge warning threshold percentage (< 70% indicates significant degradation). |
+| `{$FS_BATTERY_HEALTH_CRIT}` | `50` | Critical battery health/charge threshold percentage (replace battery immediately; risk of cache data loss). |
 
 ---
 

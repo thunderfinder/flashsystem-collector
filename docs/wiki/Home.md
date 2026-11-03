@@ -146,4 +146,4 @@ You should receive a structured JSON object containing physical hardware metrics
 2. Select `template/IBM FlashSystem Collector.yaml` and click **Import**.
 3. Create a Host for your FlashSystem with interface set to `<FLASHSYSTEM_IP>`.
 4. Link the `IBM FlashSystem Collector` template to the host.
-5. In Host Macros, customize `{$FS_USER}`, `{$FS_KEYFILE}`, and capacity alert thresholds as required.
+5. In Host Macros, customize user macros (such as `{$FS_COLLECT_INTERVAL}`, `{$FS_POOL_WARN_PCT}`, latency, write cache, and temperature thresholds) as required.

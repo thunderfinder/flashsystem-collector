@@ -83,14 +83,22 @@ The template includes configurable user macros with production-tuned defaults:
 
 | Macro | Default Value | Description |
 | :--- | :--- | :--- |
-| `{$FS_COLLECT_INTERVAL}` | `1m` | Execution interval for the Master Item collector. |
+| `{$FS_COLLECT_INTERVAL}` | `60` | Execution interval for the Master Item collector (in seconds; must be greater than `{$FS_TIMEOUT}`). |
+| `{$FS_TIMEOUT}` | `55` | Timeout parameter for external script invocation (in seconds; requires `Timeout=60` or greater in `zabbix_server.conf`). |
 | `{$FS_DISCOVERY_INTERVAL}`| `4h` | Execution interval for LLD rules (matches `FS_DISCOVERY_TTL`). |
-| `{$FS_TIMEOUT}` | `55s` | Timeout parameter for external script invocation. |
 | `{$FS_POOL_WARN_PCT}` | `80` | Warning threshold for storage pool capacity utilization (%). |
 | `{$FS_POOL_CRIT_PCT}` | `90` | Disaster/critical threshold for storage pool capacity utilization (%). |
-| `{$FS_LATENCY_READ_WARN}` | `10` | Read latency warning threshold in milliseconds (ms). |
-| `{$FS_LATENCY_WRITE_WARN}`| `10` | Write latency warning threshold in milliseconds (ms). |
+| `{$FS_LATENCY_READ_WARN}` | `2` | Read latency warning threshold in milliseconds (ms) (tuned for all-flash arrays per IBM Redbook SG248543; typically < 1ms). |
+| `{$FS_LATENCY_READ_CRIT}` | `10` | Read latency critical threshold in milliseconds (ms). |
+| `{$FS_LATENCY_WRITE_WARN}`| `5` | Write latency warning threshold in milliseconds (ms) (tuned for flash arrays). |
+| `{$FS_LATENCY_WRITE_CRIT}`| `50` | Write latency critical threshold in milliseconds (ms) (per IBM Redbook SG248543 cap. 9; > 50ms indicates storage controller overload). |
 | `{$FS_CPU_WARN}` | `80` | Canister CPU utilization warning threshold (%). |
+| `{$FS_WRITE_CACHE_WARN}` | `70` | Write cache utilization warning threshold (%) (IBM Redbook SG248543 cap. 9 saturation metric). |
+| `{$FS_WRITE_CACHE_CRIT}` | `85` | Write cache utilization critical threshold (%) (sustained > 85% indicates severe destage degradation risk). |
+| `{$FS_TEMP_WARN}` | `35` | Ambient temperature warning threshold in Celsius (°C). |
+| `{$FS_TEMP_CRIT}` | `40` | Ambient temperature critical threshold in Celsius (°C). |
+| `{$FS_BATTERY_HEALTH_WARN}`| `70` | Enclosure battery charge/health warning threshold (%) (< 70% indicates significant degradation). |
+| `{$FS_BATTERY_HEALTH_CRIT}`| `50` | Enclosure battery charge/health critical threshold (%) (replace battery immediately to prevent cache data loss). |
 
 ---
 
@@ -120,13 +128,20 @@ This guarantees that all capacity metrics in Zabbix (`flashsystem.system.capacit
 
 The template includes preconfigured operational alerts:
 
-- **Storage System Unreachable**: Fires if `flashsystem.collector.success[{HOST.IP}]` equals `0` for 3 consecutive polls (Disaster severity).
-- **Cluster Status Degraded**: Fires if `flashsystem.system.status[{HOST.IP}]` is not `online` (High severity).
-- **Pool Capacity Critical**: Fires if `flashsystem.pool.pct[{HOST.IP},{#POOLNAME}]` exceeds `{$FS_POOL_CRIT_PCT}` (Disaster severity).
-- **Pool Capacity Warning**: Fires if `flashsystem.pool.pct[{HOST.IP},{#POOLNAME}]` exceeds `{$FS_POOL_WARN_PCT}` (Warning severity).
-- **High Read/Write Latency**: Fires if latency exceeds `{$FS_LATENCY_READ_WARN}` or `{$FS_LATENCY_WRITE_WARN}` for 5 minutes (Average severity).
-- **High Storage Controller CPU**: Fires if canister CPU exceeds `{$FS_CPU_WARN}` for 5 minutes (Warning severity).
-- **Component Failures**: Dynamic triggers for failed drives, degraded enclosure canisters, battery end-of-life warnings, and PSU power input/fan failures.
+- **Storage System Unreachable**: Fires if `flashsystem.collector.success[{HOST.IP}]` equals `0` for 3 consecutive polls (High severity).
+- **ICMP Ping Unreachable**: Fires if `icmpping` equals `0` for 3 consecutive checks (High severity).
+- **Cluster Status Not Online**: Fires if `flashsystem.system.status[{HOST.IP}]` is not `online` (Disaster severity).
+- **Cluster Redundancy Degraded**: Fires if `flashsystem.system.nodes[{HOST.IP}]` drops below 2 active nodes (High severity).
+- **Statistics Engine Disabled**: Fires if `flashsystem.system.statistics[{HOST.IP}]` is not `on` (Warning severity).
+- **Pool Capacity Critical**: Fires if `flashsystem.pool.pct[{HOST.IP},{#POOLNAME}]` exceeds `{$FS_POOL_CRIT_PCT}` (High severity).
+- **Pool Capacity Warning**: Fires if `flashsystem.pool.pct[{HOST.IP},{#POOLNAME}]` exceeds `{$FS_POOL_WARN_PCT}` and is below `{$FS_POOL_CRIT_PCT}` (Warning severity).
+- **Read Latency (Warning / Critical)**: Fires if read latency exceeds `{$FS_LATENCY_READ_WARN}` (2ms, Warning) or `{$FS_LATENCY_READ_CRIT}` (10ms, High) sustained for 5 minutes.
+- **Write Latency (Warning / Critical)**: Fires if write latency exceeds `{$FS_LATENCY_WRITE_WARN}` (5ms, Warning) or `{$FS_LATENCY_WRITE_CRIT}` (50ms, High) sustained for 5 minutes.
+- **Write Cache Saturation (Warning / Critical)**: Fires if dirty write cache exceeds `{$FS_WRITE_CACHE_WARN}` (70%, Warning) or `{$FS_WRITE_CACHE_CRIT}` (85%, High) for 5 minutes.
+- **High Storage Controller CPU**: Fires if canister CPU exceeds `{$FS_CPU_WARN}` (80%) for 5 minutes (Warning severity).
+- **Ambient Temperature (Warning / Critical)**: Fires if ambient temperature exceeds `{$FS_TEMP_WARN}` (35°C, Warning) or `{$FS_TEMP_CRIT}` (40°C, High) for 5 minutes.
+- **Battery Health Degraded / Critical**: Fires if battery charge drops below `{$FS_BATTERY_HEALTH_WARN}` (70%, Warning) or `{$FS_BATTERY_HEALTH_CRIT}` (50%, High) for 5 minutes.
+- **Component Offline Failures**: Dynamic trigger prototypes fire when discovered storage pools, physical drives, virtual volumes, enclosures, nodes, FC ports, batteries, or PSUs leave their normal `online` / `active` state.
 
 ---
 

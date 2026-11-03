@@ -118,8 +118,8 @@ These items are dynamically created by Zabbix Low-Level Discovery rules:
 
 | Item Name | Zabbix Item Key | Type | Unit | Preprocessing / Source |
 | :--- | :--- | :--- | :--- | :--- |
-| **Battery Status** | `flashsystem.battery.status[{HOST.IP},{#BATTERYID}]` | Dependent | Character | `$.batteries[?(@.battery_id=='{#BATTERYID}')].status.first()` |
-| **Battery Health** | `flashsystem.battery.health[{HOST.IP},{#BATTERYID}]` | Dependent | Character | `$.batteries[?(@.battery_id=='{#BATTERYID}')].end_of_life_warning.first()` |
+| **Battery Status** | `flashsystem.battery.status[{HOST.IP},{#BATTERYID}]` | Dependent | Character | `$.batteries[?(@.battery_id=="{#BATTERYID}")].status.first()` |
+| **Battery Health** | `flashsystem.battery.health[{HOST.IP},{#BATTERYID}]` | Dependent | Percent (`%`) | `$.batteries[?(@.battery_id=="{#BATTERYID}")].percent_charged.first()` |
 
 ### Power Supply Units (`lsenclosurepsu`)
 - **Discovery Rule**: `flashsystem_collector.sh[{HOST.IP},discover,psus]`
