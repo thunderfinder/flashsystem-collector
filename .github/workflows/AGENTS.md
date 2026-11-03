@@ -22,7 +22,7 @@ This directory contains GitHub Actions workflows defining the Continuous Integra
 3. **DevSkim Action Pinning**:
    - `microsoft/DevSkim-Action` must pin to commit `734c6ed89671b1c7a5211ed334c79db261e3f221` (v1) or newer supporting .NET 8 SDK, as older releases pinned to .NET 7 fail container build.
 4. **Conditional Secret Handling**:
-   - Optional third-party security workflows (SonarQube, Endor Labs, Veracode) must include step- or job-level secret conditionals (`if: env.SONAR_TOKEN != ''`) to prevent workflow failure when secrets are not configured in forks or public PRs.
+   - Optional third-party security workflows (SonarQube, Endor Labs, Veracode, Semgrep) must include step- or job-level secret conditionals (`if: env.SONAR_TOKEN != ''`, `if: env.SEMGREP_APP_TOKEN != ''`) to prevent workflow failure when secrets are not configured in forks or public PRs.
 5. **No Secret Leaks**:
    - Never print GitHub secrets, tokens, or private keys to workflow job logs.
 6. **No Weakening Checks**:
