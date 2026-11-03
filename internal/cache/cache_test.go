@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -111,10 +112,11 @@ func TestCacheCorruptFileHandling(t *testing.T) {
 	tempDir := t.TempDir()
 	cachePath := filepath.Join(tempDir, "corrupted.cache.json")
 
-	// Escribir JSON corrupto
-	if err := os.WriteFile(cachePath, []byte("NOT_VALID_JSON{{{"), 0644); err != nil {
+	// Escribir JSON corrupto con permisos 0600
+	if err := os.WriteFile(cachePath, []byte("NOT_VALID_JSON{{{"), 0600); err != nil {
 		t.Fatalf("failed writing corrupt file: %v", err)
 	}
+	_ = os.Chmod(cachePath, 0600)
 
 	// New debe cargar un cache vacío sin panickear
 	c := New(cachePath)
@@ -128,6 +130,73 @@ func TestCacheCorruptFileHandling(t *testing.T) {
 	}
 	if _, ok := c.Get("test_key"); !ok {
 		t.Fatal("expected hit after writing to recovered cache")
+	}
+}
+
+func TestCacheFileSecurity(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 1. Create a valid cache file with 0600 permissions
+	validPath := filepath.Join(tempDir, "valid.cache.json")
+	cValid := New(validPath)
+	if err := cValid.Set("valid_key", "valid_val", time.Hour); err != nil {
+		t.Fatalf("failed setting cache entry: %v", err)
+	}
+
+	// Verify file permissions on disk after saveToDisk
+	info, err := os.Stat(validPath)
+	if err != nil {
+		t.Fatalf("failed stat valid cache file: %v", err)
+	}
+	if !info.Mode().IsRegular() {
+		t.Fatalf("expected regular file, got %v", info.Mode())
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
+		t.Fatalf("expected cache file permissions 0600, got %04o", info.Mode().Perm())
+	}
+
+	// Loading valid 0600 cache file should succeed
+	reloaded := New(validPath)
+	if _, ok := reloaded.Get("valid_key"); !ok {
+		t.Fatal("expected valid 0600 cache file to load successfully")
+	}
+
+	// 2. Symlink rejection test
+	symlinkPath := filepath.Join(tempDir, "symlink.cache.json")
+	if err := os.Symlink(validPath, symlinkPath); err != nil {
+		t.Fatalf("failed creating symlink: %v", err)
+	}
+	cSymlink := New(symlinkPath)
+	if _, ok := cSymlink.Get("valid_key"); ok {
+		t.Fatal("expected symlink cache file to be rejected on load")
+	}
+
+	// 3. Permissive file rejection on POSIX (0644, 0666)
+	if runtime.GOOS != "windows" {
+		insecurePath := filepath.Join(tempDir, "insecure.cache.json")
+		data, err := os.ReadFile(validPath)
+		if err != nil {
+			t.Fatalf("failed reading valid cache file: %v", err)
+		}
+		if err := os.WriteFile(insecurePath, data, 0644); err != nil {
+			t.Fatalf("failed writing insecure cache file: %v", err)
+		}
+		if err := os.Chmod(insecurePath, 0644); err != nil {
+			t.Fatalf("failed chmod 0644: %v", err)
+		}
+
+		cInsecure := New(insecurePath)
+		if _, ok := cInsecure.Get("valid_key"); ok {
+			t.Fatal("expected 0644 cache file to be rejected on load")
+		}
+
+		if err := os.Chmod(insecurePath, 0666); err != nil {
+			t.Fatalf("failed chmod 0666: %v", err)
+		}
+		cInsecure2 := New(insecurePath)
+		if _, ok := cInsecure2.Get("valid_key"); ok {
+			t.Fatal("expected 0666 cache file to be rejected on load")
+		}
 	}
 }
 
