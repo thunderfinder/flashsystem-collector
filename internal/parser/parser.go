@@ -2,7 +2,6 @@ package parser
 
 import (
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -378,30 +377,58 @@ func GetFieldLower(r Record, field, defaultVal string) string {
 	return strings.ToLower(GetField(r, field, defaultVal))
 }
 
-var capacityRegex = regexp.MustCompile(`^([0-9]+(?:\.[0-9]*)?)\s*([A-Za-z]+)?$`)
+// parseCapacityParts extracts the numeric string prefix and unit string suffix from val
+// using zero-allocation scanning instead of regular expressions.
+func parseCapacityParts(val string) (num float64, unit string, ok bool) {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return 0, "", false
+	}
+
+	// Must start with digit
+	if val[0] < '0' || val[0] > '9' {
+		return 0, "", false
+	}
+
+	i := 0
+	hasDot := false
+	for i < len(val) {
+		c := val[i]
+		if c >= '0' && c <= '9' {
+			i++
+		} else if c == '.' && !hasDot {
+			hasDot = true
+			i++
+		} else {
+			break
+		}
+	}
+
+	numPart := val[:i]
+	num, err := strconv.ParseFloat(numPart, 64)
+	if err != nil {
+		return 0, "", false
+	}
+
+	rest := strings.TrimSpace(val[i:])
+	// Optional unit: verify all characters are letters if present
+	for j := 0; j < len(rest); j++ {
+		c := rest[j]
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+			return 0, "", false
+		}
+	}
+
+	return num, strings.ToUpper(rest), true
+}
 
 // FormatCapacity normaliza o formatea capacidades de almacenamiento según la regla:
 // Para menos de un terabyte (< 1 TB) se expresa en GB, y para 1 TB o más en TB.
 // Si el valor no se puede interpretar numéricamente o viene vacío, se retorna intacto.
 func FormatCapacity(val string) string {
-	val = strings.TrimSpace(val)
-	if val == "" {
+	num, unit, ok := parseCapacityParts(val)
+	if !ok {
 		return val
-	}
-
-	m := capacityRegex.FindStringSubmatch(val)
-	if len(m) < 2 {
-		return val
-	}
-
-	num, err := strconv.ParseFloat(m[1], 64)
-	if err != nil {
-		return val
-	}
-
-	unit := ""
-	if len(m) > 2 {
-		unit = strings.ToUpper(strings.TrimSpace(m[2]))
 	}
 
 	// Base-2 binary units matching IBM Storage Virtualize CLI Guide (Table 3):

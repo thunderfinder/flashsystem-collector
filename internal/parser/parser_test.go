@@ -241,6 +241,24 @@ func TestParseEmptyAndErrors(t *testing.T) {
 	}
 }
 
+func BenchmarkFormatCapacity(b *testing.B) {
+	inputs := []string{
+		"960247313203",
+		"894.3GB",
+		"1099511627776",
+		"1.9TB",
+		"500MB",
+		"invalid",
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, in := range inputs {
+			_ = FormatCapacity(in)
+		}
+	}
+}
+
 func BenchmarkIsNoResults(b *testing.B) {
 	line := "0:vol_prod_001:0:io_grp0:online:0:Pool0:100.00GB:striped:yes:::none::none::60050768018105AA0000000000000001:0:1:empty:0:no:0"
 	b.ReportAllocs()
