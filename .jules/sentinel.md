@@ -15,3 +15,11 @@
 **Learning:** On shared monitoring systems running Zabbix server or proxy, any unprivileged local user or process could append or overwrite host keys in a permissive `known_hosts` file. Unlike standard OpenSSH which warns or rejects untrusted files, Go's `golang.org/x/crypto/ssh/knownhosts` parses files without checking filesystem permissions or verifying that the path is a regular file. An attacker modifying `known_hosts` could poison trusted host keys and execute a man-in-the-middle (MITM) attack to steal FlashSystem credentials during collector polling.
 
 **Prevention:** Always enforce regular file validation (`info.Mode().IsRegular()`) and strict POSIX write permissions (`info.Mode().Perm() & 0022 == 0`, forbidding group and other write access) on host-key database files before passing them to `knownhosts.New`.
+
+## 2025-05-20 - Cache File Permissions, Symlink Rejection, and Path Traversal Hardening
+
+**Vulnerability:** Cache files located by default in shared directory `/var/tmp` were read without verifying whether the target was a symbolic link or possessed group- or world-accessible permissions (e.g., `0644`, `0666`), enabling local unprivileged users to pre-create or modify cache files, poison stale cache fallback data or discovery payloads served to Zabbix, or point symlinks to arbitrary files. In addition, hostname sanitization did not replace `..` traversal tokens.
+
+**Learning:** On multi-user systems and shared monitoring proxies where `/var/tmp` is world-writable with the sticky bit, `os.ReadFile` automatically follows symbolic links and does not check file permissions. If an attacker plants a permissive or tampered cache file, the collector would load it into memory and serve poisoned telemetry during SSH outages or discovery cache hits.
+
+**Prevention:** Always verify cache files with `os.Lstat` to reject symlinks and non-regular files (`!info.Mode().IsRegular()`), reject files with group/other permissions (`info.Mode().Perm() & 0077 != 0`) on POSIX before reading, enforce `0600` on temporary files during atomic persistence, and sanitize `..` tokens in `Config.CacheFile`.

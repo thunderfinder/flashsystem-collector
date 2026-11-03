@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -185,9 +186,26 @@ func (c *Cache) loadFromDisk() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	data, err := os.ReadFile(c.filePath)
+	info, err := os.Lstat(c.filePath)
 	if err != nil {
 		// Archivo no existe todavía — es el caso normal en la primera ejecución.
+		return
+	}
+
+	// Security: cache file must be a regular file (reject symlinks, FIFOs, devices).
+	if !info.Mode().IsRegular() {
+		return
+	}
+
+	// Security: on POSIX systems, cache file must be accessible only by the owner
+	// (0600 or stricter). Reject files accessible by group or others to prevent
+	// loading attacker-tampered cache from shared directories like /var/tmp.
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
+		return
+	}
+
+	data, err := os.ReadFile(c.filePath)
+	if err != nil {
 		return
 	}
 
@@ -246,6 +264,11 @@ func (c *Cache) saveToDisk() error {
 	if _, err := tmp.Write(data); err != nil {
 		tmp.Close()
 		return fmt.Errorf("cache: cannot write to temp file %q: %w", tmpName, err)
+	}
+
+	// Explicitly enforce restrictive 0600 permissions on POSIX systems.
+	if runtime.GOOS != "windows" {
+		_ = os.Chmod(tmpName, 0600)
 	}
 
 	// Sync para garantizar que los datos llegaron al disco.
