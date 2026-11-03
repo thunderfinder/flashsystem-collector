@@ -29,3 +29,9 @@
 **Learning:** The primary CI workflow `.github/workflows/go.yml` ran `go test -v ./...` without data race detection (`-race`), differing from the documented quality standard in `docs/wiki/Testing-and-Quality.md` and allowing subtle data races in concurrency-critical packages (`internal/cache`, `internal/zabbix`, `internal/ssh`) to pass CI unnoticed. Furthermore, the job omitted an explicit execution timeout, allowing hanging test suites or stuck builds to consume GitHub Actions runner resources indefinitely.
 
 **Action:** Ensure `.github/workflows/go.yml` executes `go test -v -race ./...` and configures `timeout-minutes: 10` on the `build` job.
+
+## 2026-11-03 - Optional Secret Guards in Semgrep Workflow
+
+**Learning:** Optional third-party security workflow `.github/workflows/semgrep.yml` unconditionally ran `returntocorp/semgrep-action` and SARIF upload without verifying if `SEMGREP_APP_TOKEN` was defined. When triggered on pull requests from forks or when optional repository secrets are absent, Semgrep fails the workflow run. In addition, the job lacked an explicit timeout.
+
+**Action:** Ensure `.github/workflows/semgrep.yml` guards action steps with `if: env.SEMGREP_APP_TOKEN != ''` and includes `timeout-minutes: 10`.
