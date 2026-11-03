@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -185,9 +186,22 @@ func (c *Cache) loadFromDisk() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Validar que el archivo sea regular y tenga permisos seguros.
+	info, err := os.Stat(c.filePath)
+	if err != nil {
+		return
+	}
+	if !info.Mode().IsRegular() {
+		// Archivo no regular (ej: symlink o dispositivo) — descartar.
+		return
+	}
+	// Restrictivo en POSIX: no accesible por grupo u otros.
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
+		return
+	}
+
 	data, err := os.ReadFile(c.filePath)
 	if err != nil {
-		// Archivo no existe todavía — es el caso normal en la primera ejecución.
 		return
 	}
 
@@ -256,6 +270,11 @@ func (c *Cache) saveToDisk() error {
 
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("cache: cannot close temp file %q: %w", tmpName, err)
+	}
+
+	// Asegurar permisos estrictos (0600) antes del rename.
+	if runtime.GOOS != "windows" {
+		_ = os.Chmod(tmpName, 0600)
 	}
 
 	// Rename atómico: reemplaza el archivo de cache en una operación.

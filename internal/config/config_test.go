@@ -447,6 +447,7 @@ func TestCacheFile(t *testing.T) {
 		{"storage:primary", "/var/tmp/flashsystem_storage_primary.cache.json"},
 		{"host/sub/name", "/var/tmp/flashsystem_host_sub_name.cache.json"},
 		{"host name with spaces", "/var/tmp/flashsystem_host_name_with_spaces.cache.json"},
+		{"../../etc/passwd", "/var/tmp/flashsystem_____etc_passwd.cache.json"},
 	}
 
 	for _, tt := range tests {

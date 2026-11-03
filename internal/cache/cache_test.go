@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -157,4 +158,37 @@ func TestCacheConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestCacheFilePermissionsAndSecurity(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping POSIX permission tests on Windows")
+	}
+
+	tempDir := t.TempDir()
+	cachePath := filepath.Join(tempDir, "security.cache.json")
+
+	c := New(cachePath)
+	if err := c.Set("key1", "val1", time.Minute); err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	// Verify file was created with 0600 permissions
+	info, err := os.Stat(cachePath)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if info.Mode().Perm()&0077 != 0 {
+		t.Errorf("expected 0600 permissions, got %04o", info.Mode().Perm())
+	}
+
+	// If permissions are overly permissive (e.g. 0644), loadFromDisk must reject it
+	if err := os.Chmod(cachePath, 0644); err != nil {
+		t.Fatalf("Chmod failed: %v", err)
+	}
+
+	cInsecure := New(cachePath)
+	if _, ok := cInsecure.Get("key1"); ok {
+		t.Fatal("expected cache to reject loading overly permissive file (0644)")
+	}
 }
