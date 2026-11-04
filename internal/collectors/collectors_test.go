@@ -69,7 +69,7 @@ type mockCollector struct {
 	runCount int32
 }
 
-func (m *mockCollector) Name() string { return m.name }
+func (m *mockCollector) Name() string       { return m.name }
 func (m *mockCollector) TTL() time.Duration { return m.ttl }
 func (m *mockCollector) Collect(client *internalssh.Client) ([]parser.Record, error) {
 	atomic.AddInt32(&m.runCount, 1)
