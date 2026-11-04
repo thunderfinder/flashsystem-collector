@@ -9,8 +9,8 @@
 
 El sistema opera en dos modos excluyentes:
 
-- **`collect`**: ejecuta todos los collectors (system, nodes, enclosures, drives, pools, volumes, ports, flashcopy, replication, performance) en paralelo y emite un JSON único con todos los datos. Este JSON está diseñado para usarse como **Master Item** en Zabbix, del cual se derivan Dependent Items.
-- **`discover`**: ejecuta un único collector para una categoría específica y emite JSON en formato **LLD (Low Level Discovery)** de Zabbix con macros `{#MACRO}`.
+- **`collect`**: ejecuta todos los 12 collectors (system, nodes, enclosures, drives, pools, volumes, ports, flashcopy, replication, performance, batteries, psus) en paralelo y emite un JSON único con todos los datos. Este JSON está diseñado para usarse como **Master Item** en Zabbix, del cual se derivan Dependent Items.
+- **`discover`**: ejecuta un único collector para una categoría específica y emite JSON en formato **LLD (Low Level Discovery)** de Zabbix con macros `{#MACRO}` (categorías soportadas: `drives|pools|volumes|enclosures|nodes|ports|batteries|psus`).
 
 El sistema implementa un **cache persistente en JSON** en disco para evitar conexiones SSH innecesarias. Si SSH falla, intenta servir datos del cache aunque estén expirados (stale cache) antes de retornar error.
 
@@ -44,7 +44,9 @@ flashsystem-collector/
     │   ├── ports.go                    # lsportfc
     │   ├── flashcopy.go                # lsfcmap
     │   ├── replication.go              # lsreplicationrelationship / lsrcrelationship
-    │   └── performance.go              # lssystemstats
+    │   ├── performance.go              # lssystemstats
+    │   ├── batteries.go                # lsenclosurebattery
+    │   └── psus.go                     # lsenclosurepsu
     └── zabbix/
         └── output.go                   # Construcción y serialización del JSON final
 ```
@@ -72,7 +74,7 @@ main()
             ├─ cache.Purge()              — elimina entradas expiradas
             ├─ internalssh.New()          — dial TCP + handshake SSH
             │    └─ si falla → buildFromStaleCache() → emitJSON() → return
-            ├─ collectors.AllCollectors() — instancia los 10 collectors con sus TTLs
+            ├─ collectors.AllCollectors() — instancia los 12 collectors con sus TTLs
             ├─ collectors.NewRunner()     — configura semáforo MaxConcurrent=3
             ├─ runner.RunAll()            — ejecuta collectors en paralelo
             │    └─ por cada collector:
@@ -98,8 +100,8 @@ main()
             ├─ cache.Get(MakeDiscoveryKey(host, category))
             │    └─ si hit → emitLLDFromCache() → return
             ├─ internalssh.New()
-            │    └─ si falla → emitEmptyLLD() → return
-            ├─ runDiscoveryCollector()    — ejecuta 1 collector
+            │    └─ si falla → si GetStale() hit → emitLLDFromCache() → return; si no → emitEmptyLLD() → return
+            ├─ runDiscoveryCollector()    — ejecuta 1 collector (si falla → fallback a stale cache)
             ├─ cache.Set(discoveryKey, lldItems, DiscoveryTTL)
             └─ zabbix.LLDOutput()        — stdout formato {"data":[...]}
 ```
@@ -188,7 +190,7 @@ Un flag explícito siempre sobreescribe la variable de entorno correspondiente.
 | `-cache-dir` | `FS_CACHE_DIR` | string | `/var/tmp` | Directorio para el archivo de cache |
 | `-metrics-ttl` | `FS_METRICS_TTL` | duration | `5m` | TTL de cache para métricas operativas |
 | `-discovery-ttl` | `FS_DISCOVERY_TTL` | duration | `4h` | TTL de cache para datos de discovery |
-| `-perf-ttl` | `FS_PERF_TTL` | duration | `60s` | TTL de cache para métricas de performance |
+| `-perf-ttl` / `-performance-ttl` | `FS_PERF_TTL` / `FS_PERFORMANCE_TTL` | duration | `60s` | TTL de cache para métricas de performance |
 | `-dial-timeout` | `FS_DIAL_TIMEOUT` | duration | `10s` | Timeout de conexión TCP+SSH |
 | `-cmd-timeout` | `FS_CMD_TIMEOUT` | duration | `30s` | Timeout por comando SSH individual |
 | `-max-json-bytes` | `FS_MAX_JSON_BYTES` | int | `1048576` | Tamaño máximo del JSON de salida (bytes) |
@@ -321,6 +323,9 @@ JSON emitido por stdout con la siguiente estructura de primer nivel:
   "flashcopy":   [ { "id": "0", "status": "idle_or_copied", ... } ],
   "replication": [ { ... } ],
   "performance": [ { "stat_name": "read_io", "stat_current": "912", ... } ],
+  "batteries":   [ { "enclosure_id": "1", "battery_id": "1", "status": "online", ... } ],
+  "psus":        [ { "enclosure_id": "1", "psu_id": "1", "status": "online", ... } ],
+  "units_info":  { "vdisk_ms": "microseconds", "read_ms": "milliseconds", "cpu_pc": "percent", ... },
   "status": {
     "success": true,
     "duration_ms": 1234,
@@ -391,6 +396,8 @@ flashsystem_collector.sh[{HOST.IP},discover,volumes]
 flashsystem_collector.sh[{HOST.IP},discover,enclosures]
 flashsystem_collector.sh[{HOST.IP},discover,nodes]
 flashsystem_collector.sh[{HOST.IP},discover,ports]
+flashsystem_collector.sh[{HOST.IP},discover,batteries]
+flashsystem_collector.sh[{HOST.IP},discover,psus]
 ```
 
 **Extracción de valores con JSONPath** (ejemplos basados en la estructura real del JSON):
@@ -487,10 +494,8 @@ Cada host monitoreado tiene su propio archivo de cache.
 | Tipo | TTL default | Configurable via |
 |------|------------|-----------------|
 | Métricas operativas (pools, volumes, nodes, system, flashcopy, replication) | 5 minutos | `-metrics-ttl` / `FS_METRICS_TTL` |
-| Performance (lssystemstats) | 1 minuto | no hay flag separado — usa `PerformanceTTL` hardcoded en `AllCollectors()` pasando `cfg.Cache.PerformanceTTL` |
-| Discovery (drives, enclosures, ports) | 4 horas | `-discovery-ttl` / `FS_DISCOVERY_TTL` |
-
-> **Nota**: `PerformanceTTL` tiene su propio campo en `CacheConfig` (default 60s) pero no tiene flag CLI ni variable de entorno expuesta en el código analizado. Su valor es siempre el default de 60s salvo que se modifique el código fuente.
+| Performance (lssystemstats) | 1 minuto | `-perf-ttl` / `-performance-ttl` (`FS_PERF_TTL` / `FS_PERFORMANCE_TTL`) |
+| Discovery (drives, enclosures, ports, batteries, psus) | 4 horas | `-discovery-ttl` / `FS_DISCOVERY_TTL` |
 
 ### Comportamiento ante cache corrupto
 
@@ -549,14 +554,8 @@ Cada ejecución del binario establece una nueva conexión SSH. El cache en disco
 ### Un host por ejecución
 El binario acepta exactamente un `-host` por ejecución. Para monitorear múltiples FlashSystems, Zabbix debe invocar el script por separado para cada host.
 
-### `PerformanceTTL` no configurable externamente
-El TTL de performance (default 60s) está en `CacheConfig` pero no está expuesto como flag CLI ni variable de entorno en el código analizado. Para cambiarlo se requiere modificar el código fuente.
-
 ### Sin paginación de volúmenes
 `lsvdisk` se ejecuta sin flags de paginación — retorna todos los volúmenes en una llamada. El límite `MaxVolumes` solo trunca el output JSON, no limita la consulta SSH.
-
-### Sin template Zabbix incluido
-El código no incluye ningún archivo XML/YAML de template para Zabbix. El documento menciona la estructura de items y LLD pero el template debe crearse manualmente en Zabbix.
 
 ### Campos de Record son siempre strings
 El parser retorna todos los valores como `string`. No hay conversión automática a tipos numéricos. Las expresiones JSONPath en Zabbix deben manejar que valores como `"read_io"` o `"capacity"` son strings.
@@ -637,7 +636,7 @@ El cache se reconstruye en la próxima ejecución.
 
 **Causas posibles en orden de probabilidad**:
 1. SSH falla — ver sección anterior
-2. Categoría inválida — debe ser exactamente: `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`
+2. Categoría inválida — debe ser exactamente: `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`
 3. El storage no tiene ítems de esa categoría (ej: no hay FlashCopy configurado)
 4. Cache de discovery está presente y tiene lista vacía — borrar el cache
 

@@ -161,6 +161,26 @@ build_auth_args() {
         auth_args+=("-perf-ttl" "${FS_PERF_TTL}")
     fi
 
+    if [[ -n "${FS_DIAL_TIMEOUT:-}" ]]; then
+        auth_args+=("-dial-timeout" "${FS_DIAL_TIMEOUT}")
+    fi
+
+    if [[ -n "${FS_CMD_TIMEOUT:-}" ]]; then
+        auth_args+=("-cmd-timeout" "${FS_CMD_TIMEOUT}")
+    fi
+
+    if [[ -n "${FS_MAX_JSON_BYTES:-}" ]]; then
+        auth_args+=("-max-json-bytes" "${FS_MAX_JSON_BYTES}")
+    fi
+
+    if [[ -n "${FS_MAX_VOLUMES:-}" ]]; then
+        auth_args+=("-max-volumes" "${FS_MAX_VOLUMES}")
+    fi
+
+    if [[ -n "${FS_MAX_DRIVES:-}" ]]; then
+        auth_args+=("-max-drives" "${FS_MAX_DRIVES}")
+    fi
+
     if [[ "${FS_VERBOSE:-false}" == "true" ]]; then
         auth_args+=("-verbose")
     fi
