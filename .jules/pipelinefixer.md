@@ -35,3 +35,9 @@
 **Learning:** Optional third-party security workflow `.github/workflows/semgrep.yml` unconditionally ran `returntocorp/semgrep-action` and SARIF upload without verifying if `SEMGREP_APP_TOKEN` was defined. When triggered on pull requests from forks or when optional repository secrets are absent, Semgrep fails the workflow run. In addition, the job lacked an explicit timeout.
 
 **Action:** Ensure `.github/workflows/semgrep.yml` guards action steps with `if: env.SEMGREP_APP_TOKEN != ''` and includes `timeout-minutes: 10`.
+
+## 2026-11-03 - Explicit Job Timeouts in Security Scanning Workflows
+
+**Learning:** Third-party security analysis workflows (`devskim.yml`, `endorlabs.yml`, `sonarqube.yml`, and `veracode.yml`) omitted explicit `timeout-minutes` on their jobs, causing GitHub Actions to fall back to the platform default of 360 minutes (6 hours). When external scanning tools encounter transient network delays, container pull stalls, or API latency, jobs risk hanging and exhausting CI runner capacity.
+
+**Action:** Configure `timeout-minutes: 10` on all third-party security scanning jobs (`lint` in `devskim.yml`, `scan` in `endorlabs.yml`, `Analysis` in `sonarqube.yml`, and `build-and-pipeline-scan` in `veracode.yml`) to enforce deterministic runtime bounds across all CI pipelines.
