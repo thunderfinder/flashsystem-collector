@@ -149,7 +149,16 @@ func runDiscover() {
 	// Cache miss: conectar SSH y ejecutar collector correspondiente.
 	client, err := dialSSH(cfg)
 	if err != nil {
-		// Discovery fallida: emitir LLD vacío (Zabbix no crea items = no alertas falsas).
+		// Si SSH falla, intentar servir discovery desde cache stale antes de emitir vacío.
+		if entry, ok := c.GetStale(cacheKey); ok {
+			var records []map[string]string
+			if unmarshalErr := entry.Unmarshal(&records); unmarshalErr == nil {
+				emitLLDFromCache(records)
+				logStderr("discover SSH failed (%v), serving stale discovery cache", err)
+				return
+			}
+		}
+		// Discovery fallida sin cache: emitir LLD vacío (Zabbix no crea items = no alertas falsas).
 		emitEmptyLLD()
 		logStderr("discover SSH failed: %v", err)
 		return
@@ -158,6 +167,15 @@ func runDiscover() {
 
 	records, fieldMap, err := runDiscoveryCollector(client, *category, cfg)
 	if err != nil {
+		// Si el collector falla, intentar servir discovery desde cache stale.
+		if entry, ok := c.GetStale(cacheKey); ok {
+			var records []map[string]string
+			if unmarshalErr := entry.Unmarshal(&records); unmarshalErr == nil {
+				emitLLDFromCache(records)
+				logStderr("discover collector failed for %q (%v), serving stale discovery cache", *category, err)
+				return
+			}
+		}
 		emitEmptyLLD()
 		logStderr("discover collector failed for %q: %v", *category, err)
 		return
