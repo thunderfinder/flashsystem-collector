@@ -23,3 +23,11 @@
 **Learning:** On multi-user systems and shared monitoring proxies where `/var/tmp` is world-writable with the sticky bit, `os.ReadFile` automatically follows symbolic links and does not check file permissions. If an attacker plants a permissive or tampered cache file, the collector would load it into memory and serve poisoned telemetry during SSH outages or discovery cache hits.
 
 **Prevention:** Always verify cache files with `os.Lstat` to reject symlinks and non-regular files (`!info.Mode().IsRegular()`), reject files with group/other permissions (`info.Mode().Perm() & 0077 != 0`) on POSIX before reading, enforce `0600` on temporary files during atomic persistence, and sanitize `..` tokens in `Config.CacheFile`.
+
+## 2025-05-21 - Defense-in-Depth SSH Private Key Permissions Enforcement
+
+**Vulnerability:** While `internal/config.validate()` checked private key file permissions during CLI/environment configuration parsing, `internal/ssh.buildAuthMethod` directly invoked `os.ReadFile(cfg.KeyFile)` without file type or permission checks. Any caller initializing an SSH client directly or bypassing configuration validation could read and authenticate using group- or world-accessible keys or non-regular files.
+
+**Learning:** Relying solely on outer configuration parsing layers for filesystem security checks violates defense-in-depth principles. The SSH client transport package is the final boundary responsible for reading credential files from disk.
+
+**Prevention:** Enforce `validateKeyFile` directly inside `internal/ssh.buildAuthMethod` to require regular files (`info.Mode().IsRegular()`) and strict POSIX permissions (`info.Mode().Perm() & 0077 == 0`, chmod 600 or stricter) prior to reading private keys.
