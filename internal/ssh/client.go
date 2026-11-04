@@ -162,6 +162,10 @@ func (c *Client) Ping() error {
 func buildAuthMethod(cfg ClientConfig) (ssh.AuthMethod, error) {
 
 	if cfg.KeyFile != "" {
+		if err := validateKeyFile(cfg.KeyFile); err != nil {
+			return nil, fmt.Errorf("invalid SSH key file: %w", err)
+		}
+
 		// Autenticación por clave privada (recomendado para producción).
 		keyBytes, err := os.ReadFile(cfg.KeyFile)
 		if err != nil {
@@ -223,6 +227,22 @@ func buildHostKeyCallback(cfg ClientConfig) (ssh.HostKeyCallback, error) {
 			"use -insecure flag (for isolated networks) or " +
 			"-known-hosts /path/to/known_hosts (for production)",
 	)
+}
+
+// validateKeyFile verifies that an SSH private key file is accessible, a regular file,
+// and not accessible by group or others on POSIX systems (chmod 600 required).
+func validateKeyFile(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("cannot access SSH key file %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("SSH key file %q is not a regular file", path)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
+		return fmt.Errorf("SSH key file %q has insecure permissions (%04o): must not be accessible by group or others (chmod 600 required)", path, info.Mode().Perm())
+	}
+	return nil
 }
 
 // validateKnownHostsFile verifies that a known_hosts file is a regular file and

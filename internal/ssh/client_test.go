@@ -200,7 +200,74 @@ func TestBuildAuthMethod(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for non-existent key file, got nil")
 		}
+		if !strings.Contains(err.Error(), "invalid SSH key file") {
+			t.Fatalf("expected 'invalid SSH key file' in error, got: %v", err)
+		}
 	})
+
+	t.Run("DirectoryKeyFile", func(t *testing.T) {
+		dirPath := filepath.Join(tempDir, "key_dir")
+		if err := os.Mkdir(dirPath, 0700); err != nil {
+			t.Fatalf("failed to create directory: %v", err)
+		}
+
+		cfg := ClientConfig{
+			KeyFile: dirPath,
+		}
+		_, err := buildAuthMethod(cfg)
+		if err == nil {
+			t.Fatal("expected error for directory key file, got nil")
+		}
+		if !strings.Contains(err.Error(), "not a regular file") {
+			t.Fatalf("expected 'not a regular file' in error, got: %v", err)
+		}
+	})
+
+	if runtime.GOOS != "windows" {
+		t.Run("InsecurePermissionsKeyFile", func(t *testing.T) {
+			keyPEM := generateTestPrivateKeyPEM(t)
+
+			// 1. Group/world-readable key (0644)
+			insecureKey644 := filepath.Join(tempDir, "insecure_key_644")
+			if err := os.WriteFile(insecureKey644, keyPEM, 0644); err != nil {
+				t.Fatalf("failed to write key file: %v", err)
+			}
+			if err := os.Chmod(insecureKey644, 0644); err != nil {
+				t.Fatalf("failed to chmod key file: %v", err)
+			}
+
+			cfg := ClientConfig{
+				KeyFile: insecureKey644,
+			}
+			_, err := buildAuthMethod(cfg)
+			if err == nil {
+				t.Fatal("expected error for insecure key file permissions (0644), got nil")
+			}
+			if !strings.Contains(err.Error(), "insecure permissions") {
+				t.Fatalf("expected 'insecure permissions' in error, got: %v", err)
+			}
+
+			// 2. Group/world-writable key (0666)
+			insecureKey666 := filepath.Join(tempDir, "insecure_key_666")
+			if err := os.WriteFile(insecureKey666, keyPEM, 0666); err != nil {
+				t.Fatalf("failed to write key file: %v", err)
+			}
+			if err := os.Chmod(insecureKey666, 0666); err != nil {
+				t.Fatalf("failed to chmod key file: %v", err)
+			}
+
+			cfg = ClientConfig{
+				KeyFile: insecureKey666,
+			}
+			_, err = buildAuthMethod(cfg)
+			if err == nil {
+				t.Fatal("expected error for insecure key file permissions (0666), got nil")
+			}
+			if !strings.Contains(err.Error(), "insecure permissions") {
+				t.Fatalf("expected 'insecure permissions' in error, got: %v", err)
+			}
+		})
+	}
 
 	t.Run("InvalidKeyFileContent", func(t *testing.T) {
 		keyPath := filepath.Join(tempDir, "corrupt_key")
