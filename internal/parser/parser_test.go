@@ -310,14 +310,14 @@ func TestFormatCapacity(t *testing.T) {
 		{"894.3GB", "894.3GB"},
 		{"800GB", "800GB"},
 		{"500MB", "0.5GB"},
-		{"1073741824", "1GB"},            // 1 GiB in bytes
-		{"960247313203", "894.3GB"},       // 894.3 GiB in bytes
-		{"536870912000", "500GB"},         // 500 GiB in bytes
+		{"1073741824", "1GB"},       // 1 GiB in bytes
+		{"960247313203", "894.3GB"}, // 894.3 GiB in bytes
+		{"536870912000", "500GB"},   // 500 GiB in bytes
 		// 1 TB or greater: display in TB
-		{"1099511627776", "1TB"},          // 1 TiB in bytes
+		{"1099511627776", "1TB"}, // 1 TiB in bytes
 		{"1024GB", "1TB"},
 		{"1.9TB", "1.9TB"},
-		{"2089072092774", "1.9TB"},        // 1.9 TiB in bytes
+		{"2089072092774", "1.9TB"}, // 1.9 TiB in bytes
 		{"10TB", "10TB"},
 		{"1900GB", "1.9TB"},
 		{"2.4TB", "2.4TB"},
