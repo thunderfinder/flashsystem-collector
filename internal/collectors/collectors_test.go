@@ -4,10 +4,12 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -218,6 +220,64 @@ func TestRunner(t *testing.T) {
 		}
 		if res.Error == "" || !strings.Contains(res.Error, "SSH failed (using stale cache)") {
 			t.Errorf("expected stale cache note in error, got: %s", res.Error)
+		}
+	})
+
+	t.Run("StaleCacheExpiredBeyondMaxStaleAge", func(t *testing.T) {
+		cacheFile := filepath.Join(tempDir, "cache_stale_too_old.json")
+		c := cache.New(cacheFile)
+
+		key := cache.MakeKey("10.0.0.1", "volumes")
+		oldTime := time.Now().Add(-25 * time.Hour)
+		entry := cache.Entry{
+			Key:       key,
+			Value:     []byte(`[{"id":"0","name":"vol0"}]`),
+			CachedAt:  oldTime,
+			ExpiresAt: oldTime.Add(5 * time.Minute),
+		}
+
+		cacheData := struct {
+			Version   string                 `json:"version"`
+			UpdatedAt time.Time              `json:"updated_at"`
+			Entries   map[string]cache.Entry `json:"entries"`
+		}{
+			Version:   "1.0",
+			UpdatedAt: oldTime,
+			Entries:   map[string]cache.Entry{key: entry},
+		}
+		data, _ := json.Marshal(cacheData)
+		if err := os.WriteFile(cacheFile, data, 0600); err != nil {
+			t.Fatalf("failed to write old cache file: %v", err)
+		}
+
+		c = cache.New(cacheFile)
+
+		col := &mockCollector{
+			name: "volumes",
+			ttl:  5 * time.Minute,
+			collect: func(client *internalssh.Client) ([]parser.Record, error) {
+				return nil, errors.New("storage offline")
+			},
+		}
+
+		runner := NewRunner(RunnerConfig{
+			Host:          "10.0.0.1",
+			MaxConcurrent: 2,
+			MaxStaleAge:   24 * time.Hour,
+		}, c, []Collector{col})
+
+		results := runner.RunAll(nil)
+		res := results["volumes"]
+
+		// Because entry is 25 hours old, it should not be accepted as stale
+		if res.CacheHit {
+			t.Error("expected CacheHit false because stale entry exceeds MaxStaleAge")
+		}
+		if len(res.Records) != 0 {
+			t.Errorf("expected 0 records for expired stale entry, got %d", len(res.Records))
+		}
+		if res.Error != "storage offline" {
+			t.Errorf("expected direct error 'storage offline', got %q", res.Error)
 		}
 	})
 

@@ -15,7 +15,11 @@ import (
 	"github.com/flashsystem-collector/internal/zabbix"
 )
 
-const version = "2.0.0"
+var version = "2.0.0"
+
+// maxStaleAge define la edad máxima para aceptar datos del cache cuando SSH falla.
+// Evita servir métricas u objetos descubiertos obsoletos tras caídas prolongadas del storage.
+const maxStaleAge = 24 * time.Hour
 
 func main() {
 	// Definir subcomando antes de flag.Parse().
@@ -40,6 +44,9 @@ func main() {
 	case "version":
 		fmt.Printf("flashsystem-collector %s\n", version)
 		os.Exit(0)
+	case "help", "-h", "--help", "-help":
+		printUsage()
+		os.Exit(0)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown subcommand %q\n", subcommand)
 		printUsage()
@@ -61,10 +68,6 @@ func runCollect() {
 	cacheFile := cfg.CacheFile(cfg.SSH.Host)
 	c := cache.New(cacheFile)
 
-	// Purgar entradas expiradas al inicio para mantener el archivo limpio.
-	// El error de purge no es fatal.
-	_ = c.Purge()
-
 	// Conectar SSH.
 	client, err := dialSSH(cfg)
 	if err != nil {
@@ -75,6 +78,10 @@ func runCollect() {
 		return
 	}
 	defer client.Close()
+
+	// Purgar entradas expiradas solo tras conexión SSH exitosa,
+	// garantizando que el fallback a stale cache esté disponible si SSH falla.
+	_ = c.Purge()
 
 	// Construir y ejecutar collectors.
 	cols := collectors.AllCollectors(
@@ -87,6 +94,7 @@ func runCollect() {
 		collectors.RunnerConfig{
 			Host:          cfg.SSH.Host,
 			MaxConcurrent: 3,
+			MaxStaleAge:   maxStaleAge,
 		},
 		c,
 		cols,
@@ -149,12 +157,13 @@ func runDiscover() {
 	// Cache miss: conectar SSH y ejecutar collector correspondiente.
 	client, err := dialSSH(cfg)
 	if err != nil {
-		// Si SSH falla, intentar servir discovery desde cache stale antes de emitir vacío.
-		if entry, ok := c.GetStale(cacheKey); ok {
+		// Si SSH falla, intentar servir discovery desde cache stale antes de emitir vacío,
+		// respetando el límite de antigüedad máxima para no emitir datos obsoletos de días.
+		if entry, ok := c.GetStale(cacheKey); ok && time.Since(entry.CachedAt) <= maxStaleAge {
 			var records []map[string]string
 			if unmarshalErr := entry.Unmarshal(&records); unmarshalErr == nil {
 				emitLLDFromCache(records)
-				logStderr("discover SSH failed (%v), serving stale discovery cache", err)
+				logStderr("discover SSH failed (%v), serving stale discovery cache from %s", err, entry.CachedAt.Format(time.RFC3339))
 				return
 			}
 		}
@@ -168,11 +177,11 @@ func runDiscover() {
 	records, fieldMap, err := runDiscoveryCollector(client, *category, cfg)
 	if err != nil {
 		// Si el collector falla, intentar servir discovery desde cache stale.
-		if entry, ok := c.GetStale(cacheKey); ok {
+		if entry, ok := c.GetStale(cacheKey); ok && time.Since(entry.CachedAt) <= maxStaleAge {
 			var records []map[string]string
 			if unmarshalErr := entry.Unmarshal(&records); unmarshalErr == nil {
 				emitLLDFromCache(records)
-				logStderr("discover collector failed for %q (%v), serving stale discovery cache", *category, err)
+				logStderr("discover collector failed for %q (%v), serving stale discovery cache from %s", *category, err, entry.CachedAt.Format(time.RFC3339))
 				return
 			}
 		}
@@ -184,16 +193,11 @@ func runDiscover() {
 	// Guardar en cache de discovery con TTL largo.
 	// Convertir records a formato LLD para cachear el resultado final.
 	lldItems := recordsToLLDItems(records, fieldMap)
-	_ = c.Set(cacheKey, lldItems, cfg.Cache.DiscoveryTTL)
-
-	data, err := zabbix.LLDOutput(records, fieldMap)
-	if err != nil {
-		emitEmptyLLD()
-		logStderr("discover LLD serialization failed: %v", err)
-		return
+	if setErr := c.Set(cacheKey, lldItems, cfg.Cache.DiscoveryTTL); setErr != nil {
+		logStderr("warning: failed to write discovery cache for %q: %v", *category, setErr)
 	}
 
-	fmt.Println(string(data))
+	emitLLDFromCache(lldItems)
 }
 
 // dialSSH establece la conexión SSH usando la configuración cargada.
@@ -297,6 +301,16 @@ func buildFromStaleCache(
 				Name:    name,
 				Records: []parser.Record{},
 				Error:   fmt.Sprintf("SSH failed and no cache available: %v", sshErr),
+			}
+			continue
+		}
+
+		// Si la entrada stale supera la antigüedad máxima permitida, rechazarla.
+		if time.Since(entry.CachedAt) > maxStaleAge {
+			results[name] = collectors.Result{
+				Name:    name,
+				Records: []parser.Record{},
+				Error:   fmt.Sprintf("SSH failed and stale cache expired (older than %s, cached at %s): %v", maxStaleAge, entry.CachedAt.Format(time.RFC3339), sshErr),
 			}
 			continue
 		}
@@ -473,10 +487,15 @@ Collect flags:
   -insecure             Disable SSH host key verification (env: FS_INSECURE)
   -known-hosts string   Path to known_hosts file (env: FS_KNOWN_HOSTS)
   -cache-dir string     Cache directory, default /var/tmp (env: FS_CACHE_DIR)
+  -dial-timeout dur     SSH dial timeout, default 10s (env: FS_DIAL_TIMEOUT)
+  -cmd-timeout dur      SSH command timeout, default 30s (env: FS_CMD_TIMEOUT)
   -metrics-ttl duration Cache TTL for metrics, default 5m (env: FS_METRICS_TTL)
   -discovery-ttl dur    Cache TTL for discovery, default 4h (env: FS_DISCOVERY_TTL)
-  -perf-ttl duration    Cache TTL for performance stats, default 60s (env: FS_PERF_TTL)
+  -performance-ttl dur  Cache TTL for performance stats, default 1m (env: FS_PERFORMANCE_TTL)
+  -perf-ttl duration    Alias for -performance-ttl (env: FS_PERF_TTL)
   -max-json-bytes int   Max JSON output size, default 1048576 (env: FS_MAX_JSON_BYTES)
+  -max-volumes int      Max volumes in output, default 500 (env: FS_MAX_VOLUMES)
+  -max-drives int       Max drives in output, default 500 (env: FS_MAX_DRIVES)
   -verbose              Enable verbose logging to stderr (env: FS_VERBOSE)
 
 Discover flags:

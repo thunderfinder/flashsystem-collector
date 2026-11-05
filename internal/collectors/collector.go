@@ -38,6 +38,9 @@ type RunnerConfig struct {
 	// MaxConcurrent limita el número de sesiones SSH simultáneas.
 	// Recomendado: 3-5 para no saturar el FlashSystem.
 	MaxConcurrent int
+	// MaxStaleAge define la edad máxima para aceptar una entrada de cache stale.
+	// Si es 0 o negativa, por defecto es 24 horas.
+	MaxStaleAge time.Duration
 }
 
 // Runner orquesta la ejecución de todos los collectors.
@@ -53,6 +56,9 @@ type Runner struct {
 func NewRunner(cfg RunnerConfig, c *cache.Cache, cols []Collector) *Runner {
 	if cfg.MaxConcurrent <= 0 {
 		cfg.MaxConcurrent = 3
+	}
+	if cfg.MaxStaleAge <= 0 {
+		cfg.MaxStaleAge = 24 * time.Hour
 	}
 	return &Runner{
 		cfg:        cfg,
@@ -180,6 +186,11 @@ func (r *Runner) getStale(cacheKey string) (staleResult, bool) {
 	// Solución: cache expone GetStale para este caso.
 	entry, ok := r.cache.GetStale(cacheKey)
 	if !ok {
+		return staleResult{}, false
+	}
+
+	// Rechazar entradas stale que superen la edad máxima permitida.
+	if r.cfg.MaxStaleAge > 0 && time.Since(entry.CachedAt) > r.cfg.MaxStaleAge {
 		return staleResult{}, false
 	}
 
