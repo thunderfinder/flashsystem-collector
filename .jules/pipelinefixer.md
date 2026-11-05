@@ -41,3 +41,9 @@
 **Learning:** Third-party security analysis workflows (`devskim.yml`, `endorlabs.yml`, `sonarqube.yml`, and `veracode.yml`) omitted explicit `timeout-minutes` on their jobs, causing GitHub Actions to fall back to the platform default of 360 minutes (6 hours). When external scanning tools encounter transient network delays, container pull stalls, or API latency, jobs risk hanging and exhausting CI runner capacity.
 
 **Action:** Configure `timeout-minutes: 10` on all third-party security scanning jobs (`lint` in `devskim.yml`, `scan` in `endorlabs.yml`, `Analysis` in `sonarqube.yml`, and `build-and-pipeline-scan` in `veracode.yml`) to enforce deterministic runtime bounds across all CI pipelines.
+
+## 2026-11-04 - Explicit Job Timeouts in Lint and Static Analysis Workflow
+
+**Learning:** The static analysis and workflow verification pipeline `.github/workflows/lint.yml` (`deadcode`, `actionlint`, and `zizmor` jobs) omitted explicit `timeout-minutes`. In the event of external tool package installation delays (e.g. `go install deadcode`, `pip install zizmor`), action download delays, or runner stalls, jobs could execute up to the default 6-hour limit, tying up GitHub Actions concurrency limits.
+
+**Action:** Configure explicit `timeout-minutes: 10` on each job within `.github/workflows/lint.yml` to maintain consistent, deterministic runtime limits across all repository pipelines.
