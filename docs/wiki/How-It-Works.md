@@ -20,19 +20,17 @@ flowchart TD
     LoadConfig --> ValidateConfig{Validate Parameters & Permissions}
     ValidateConfig -- Invalid --> FatalExit[fatalJSON / fatalLLD: Structured Error to STDOUT + Exit 1]
 
-    ValidateConfig -- Valid --> InitCache[internal/cache: Load & Purge Disk Store]
+    ValidateConfig -- Valid --> InitCache[internal/cache: Initialize Disk Store]
     InitCache --> CheckMode{Subcommand Mode}
 
-    CheckMode -- collect --> RunCollect[collectors.Runner: Evaluate Cache Hits]
-    RunCollect --> AllHits{All Collectors in Cache?}
+    CheckMode -- collect --> DialSSH[internal/ssh: Connect & Verify Host Key]
 
-    AllHits -- Yes --> BuildJSON[internal/zabbix: Assemble Master Output]
-    AllHits -- No --> DialSSH[internal/ssh: Connect & Verify Host Key]
+    DialSSH -- SSH Failed --> FallbackStale[buildFromStaleCache: Load Stale Entries <= 24h]
+    FallbackStale --> BuildJSON[internal/zabbix: Assemble Master Output]
 
-    DialSSH -- SSH Failed --> FallbackStale[buildFromStaleCache: Load Expired Entries]
-    FallbackStale --> BuildJSON
-
-    DialSSH -- SSH Connected --> ExecCommands[Run Collectors via Semaphore Slots]
+    DialSSH -- SSH Connected --> PurgeCache[cache.Purge: Remove Expired Entries]
+    PurgeCache --> RunCollect[collectors.Runner: Evaluate Cache Hits]
+    RunCollect --> ExecCommands[Run Collectors via Semaphore Slots]
     ExecCommands --> ParseOutput[internal/parser: Parse Colon-Delimited Data]
     ParseOutput --> UpdateCache[Write New Entries via Atomic Rename]
     UpdateCache --> BuildJSON
@@ -45,9 +43,13 @@ flowchart TD
     CheckMode -- discover --> CheckDiscCache{LLD Cached & Valid?}
     CheckDiscCache -- Yes --> EmitCachedLLD[Emit Cached LLD JSON Array]
     CheckDiscCache -- No --> DialSSHDisc[Connect SSH & Run Target Collector]
-    DialSSHDisc -- Success --> CacheLLD[Save LLD Data to Cache]
+    DialSSHDisc -- Success --> RunDiscCol[Run Category Collector]
+    RunDiscCol -- Success --> CacheLLD[Save LLD Data to Cache]
     CacheLLD --> EmitLLD[Emit Formatted LLD JSON to STDOUT]
-    DialSSHDisc -- Failure --> EmitEmptyLLD[Emit Empty LLD: data=[]]
+    DialSSHDisc -- Failure --> FallbackDiscStale{Stale LLD <= 24h?}
+    RunDiscCol -- Failure --> FallbackDiscStale
+    FallbackDiscStale -- Yes --> EmitCachedLLD
+    FallbackDiscStale -- No --> EmitEmptyLLD[Emit Empty LLD: data=[]]
 
     Serialize --> WrapperExit[Wrapper: Check Exit Code & Flush STDERR]
     EmitLLD --> WrapperExit
@@ -145,7 +147,7 @@ The `Runner` orchestrates collection across all 12 domains:
    ```
    This guarantees that no more than 3 commands run simultaneously against the storage controller.
 3. **Cache Storage**: Successful query results are serialized and stored in cache tagged with the collector's respective TTL.
-4. **Stale Fallback on Error**: If `col.Collect(client)` returns an error (e.g., connection lost), the runner attempts `c.GetStale(cacheKey)`. If expired data exists, it returns those records, setting `CacheHit: true` and annotating `Error` with `"SSH failed (using stale cache): <err>"`.
+4. **Stale Fallback on Error**: If `col.Collect(client)` returns an error (e.g., connection lost), the runner attempts `c.GetStale(cacheKey)`. If expired data exists and is not older than 24 hours (`maxStaleAge`), it returns those records, setting `CacheHit: true` and annotating `Error` with `"SSH failed (using stale cache): <err>"`.
 
 ---
 

@@ -62,7 +62,8 @@ Zabbix Low-Level Discovery (LLD) is fully supported across 8 core resource categ
   - `FS_PERFORMANCE_TTL` (default `1m`): Real-time I/O performance telemetry.
 - **Atomic File Swapping**: Cache files are written to `.tmp` files and committed via POSIX `rename`, eliminating file corruption from partial writes.
 - **Automatic Stale-Data Recovery**: If the storage array is temporarily unreachable via SSH, existing expired cache entries are loaded and returned to keep Zabbix populated while alerting on the communication failure.
-- **Startup Purge**: Expired entries are automatically sanitized on subsequent collection runs to prevent unbounded cache growth.
+- **Post-Connection Purge**: Expired entries are automatically sanitized after successful SSH connection to prevent unbounded cache growth while keeping fallback data available during outages.
+- **24-Hour Stale Age Bound**: Rejects stale cache entries older than 24 hours to prevent serving dangerously obsolete data after prolonged storage disconnects.
 
 ---
 

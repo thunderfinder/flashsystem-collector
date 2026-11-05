@@ -71,9 +71,9 @@ main()
        └─ runCollect()
             ├─ config.Load()              — flags + env vars + validación
             ├─ cache.New(cacheFile)       — carga cache desde disco
-            ├─ cache.Purge()              — elimina entradas expiradas
             ├─ internalssh.New()          — dial TCP + handshake SSH
-            │    └─ si falla → buildFromStaleCache() → emitJSON() → return
+            │    └─ si falla → buildFromStaleCache() (respeta maxStaleAge=24h) → emitJSON() → return
+            ├─ cache.Purge()              — purga expiradas SOLO tras conectar SSH exitosamente
             ├─ collectors.AllCollectors() — instancia los 12 collectors con sus TTLs
             ├─ collectors.NewRunner()     — configura semáforo MaxConcurrent=3
             ├─ runner.RunAll()            — ejecuta collectors en paralelo
@@ -503,11 +503,14 @@ Si el archivo de cache existe pero el JSON es inválido, o si la versión del fo
 
 ### Comportamiento de purge
 
-Al inicio de cada ejecución `collect`, se llama `cache.Purge()` que elimina todas las entradas cuyo `expires_at` ya pasó y persiste el archivo limpio. El error de purge es ignorado (`_ = c.Purge()`).
+En cada ejecución `collect`, `cache.Purge()` se invoca **únicamente después de una conexión SSH exitosa**. Esto preserva las entradas expiradas en disco para que el fallback a stale cache esté disponible si SSH falla. `Purge()` elimina todas las entradas cuyo `expires_at` ya pasó y persiste el archivo limpio. El error de purge es ignorado (`_ = c.Purge()`).
 
-### Stale cache (fallback por fallo SSH)
+### Stale cache (fallback por fallo SSH y límite de 24 horas)
 
-Si SSH falla durante `collect`, el sistema intenta retornar el **último valor cacheado aunque esté expirado** (`GetStale()`). El campo `error` del collector afectado incluye el mensaje `"SSH failed (stale cache from <timestamp>): <error>"`. Si tampoco hay valor stale, el campo `records` es `[]` y `error` indica `"SSH failed and no cache available"`.
+Si SSH falla durante `collect` o `discover`, el sistema intenta retornar el **último valor cacheado aunque esté expirado** (`GetStale()`), siempre que su antigüedad no supere las 24 horas (`maxStaleAge = 24 * time.Hour`).
+- Si la entrada stale tiene `<= 24h`: se emiten los datos cacheados; en `collect`, el campo `error` del collector incluye el mensaje `"SSH failed (stale cache from <timestamp>): <error>"`.
+- Si la entrada stale tiene `> 24h`: se rechaza por obsoleta para evitar reportar métricas o entidades de hardware desmanteladas, emitiendo `[]` con error `"SSH failed and stale cache expired (older than 24h0m0s, cached at ...)"`.
+- Si no hay entrada previa en cache: el campo `records` es `[]` y `error` indica `"SSH failed and no cache available"`.
 
 ---
 
@@ -624,7 +627,7 @@ Normal cuando un comando específico falla en el storage:
 
 ### El archivo de cache crece indefinidamente
 
-`Purge()` se llama al inicio de cada `collect`. Si el binario no se ejecuta frecuentemente o el proceso falla antes de `Purge()`, las entradas expiradas se acumulan.
+`Purge()` se llama tras cada conexión SSH exitosa en `collect`. Si el storage permanece inalcanzable durante días o el proceso falla antes de conectar SSH, las entradas expiradas se retienen para el fallback (hasta el límite de `maxStaleAge = 24h`).
 
 **Limpiar manualmente**:
 ```bash
