@@ -23,3 +23,13 @@
 3. Concurrent calls to `Run()` across multiple worker goroutines multiplexed over the same underlying TCP connection must execute without race conditions or cross-talk between session buffers.
 
 **Action:** Maintain loopback SSH server test fixtures (`golang.org/x/crypto/ssh` on `127.0.0.1:0`) directly within `internal/ssh/client_test.go` to test SSH handshake failures, TCP dial failures, signal requests, timeout cancellations, and concurrent session multiplexing deterministically under race detection (`-race`).
+
+## 2026-05-21 - LLD Discovery Collector Routing and Macro Contract Verification
+
+**Learning:** `runDiscoveryCollector` routes 8 distinct discovery categories (`drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`) to their corresponding collector constructors and Zabbix LLD macro mappings (`zabbix.DriveLLDFields`, `zabbix.PoolLLDFields`, etc.). Previously, only the negative invalid category case was tested, leaving actual SSH command execution, parser-to-macro translation (`recordsToLLDItems`), command failure wrapping, and corrupted stale cache unmarshaling unverified in the main binary entry point.
+Testing with an in-memory loopback SSH server proved that:
+1. Each discovery category invokes its expected CLI command and correctly converts field names into Zabbix LLD macros (e.g. `tech_type` -> `{#DRIVETYPE}`, `percent_charged` -> `{#BATTERYCHARGE}`).
+2. Command execution errors properly surface as wrapped errors (`collector "..." failed: ...`).
+3. Corrupted cache entries (where JSON is valid on disk but unmarshal into `[]parser.Record` fails) are safely isolated into `out.Status.CollectorRuns` errors without crashing `buildFromStaleCache`.
+
+**Action:** Future tests touching discovery categories or Zabbix template macro contracts must ensure full coverage across all 8 supported resource types using loopback SSH test fixtures and verify that missing fields default to empty strings rather than causing nil map crashes or malformed LLD JSON arrays.
