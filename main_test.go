@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -150,6 +151,65 @@ func TestBuildFromStaleCache(t *testing.T) {
 
 	if string(out.Pools) == "[]" {
 		t.Errorf("expected pools to be populated from stale cache, got %s", string(out.Pools))
+	}
+
+}
+
+func TestBuildFromStaleCacheRejectsTooOld(t *testing.T) {
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "old.cache.json")
+	c := cache.New(cachePath)
+
+	host := "192.168.1.100"
+	cfg := &config.Config{
+		SSH: config.SSHConfig{
+			Host: host,
+		},
+		Limits: config.LimitsConfig{
+			MaxJSONBytes: 1048576,
+			MaxVolumes:   500,
+			MaxDrives:    500,
+		},
+	}
+
+	key := cache.MakeKey(host, "pools")
+	// Save entry that was cached 25 hours ago (beyond maxStaleAge = 24h)
+	oldTime := time.Now().Add(-25 * time.Hour)
+	entry := cache.Entry{
+		Key:       key,
+		Value:     []byte(`[{"id":"0","name":"Pool0","status":"online"}]`),
+		CachedAt:  oldTime,
+		ExpiresAt: oldTime.Add(5 * time.Minute),
+	}
+
+	// Manually save this entry via internal save file test
+	cacheData := struct {
+		Version   string                 `json:"version"`
+		UpdatedAt time.Time              `json:"updated_at"`
+		Entries   map[string]cache.Entry `json:"entries"`
+	}{
+		Version:   "1.0",
+		UpdatedAt: oldTime,
+		Entries:   map[string]cache.Entry{key: entry},
+	}
+	data, _ := json.Marshal(cacheData)
+	if err := os.WriteFile(cachePath, data, 0600); err != nil {
+		t.Fatalf("failed to write old cache file: %v", err)
+	}
+
+	// Re-load cache from disk
+	c = cache.New(cachePath)
+	startTime := time.Now()
+	sshErr := errors.New("storage unreachable")
+
+	out := buildFromStaleCache(c, cfg, startTime, sshErr)
+	if out == nil {
+		t.Fatal("expected non-nil output")
+	}
+
+	// Pools should NOT be populated because the entry was cached > 24 hours ago
+	if string(out.Pools) != "[]" {
+		t.Errorf("expected pools to be empty [] due to stale expiration, got: %s", string(out.Pools))
 	}
 }
 
