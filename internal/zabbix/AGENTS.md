@@ -46,8 +46,9 @@ Macro Key Contract (Do NOT rename without updating template YAML & docs):
    - Individual collector errors are collected into `status.errors[]`.
 3. **Payload Reduction Strategy**:
    - If output exceeds `MaxJSONBytes`, `reduceOutput()` progressively reduces volume/drive counts and drops secondary sections (`FlashCopy`, `Replication`) before failing.
-4. **Empty LLD Contract**:
+4. **Empty LLD Contract & Missing Field Defaults**:
    - Discovery failures must emit `{"data":[]}` so Zabbix does not trigger false entity deletion alerts.
+   - When converting records to LLD items in `LLDOutput()` or `recordsToLLDItems()`, mapped macro keys that do not exist in the source record must default to empty strings (`""`), ensuring valid JSON without null pointer crashes or malformed objects.
 5. **Template Compatibility**:
    - Any additions or changes to JSON fields or LLD macros must be mirrored in `template/IBM FlashSystem Collector.yaml` and documented in `README.md`.
    - Zabbix item and discovery rule UUIDs in the template must be exactly 32-character hexadecimal strings.

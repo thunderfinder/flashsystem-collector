@@ -95,9 +95,10 @@ Before making any modifications in this repository, every agent **must**:
 #### 1. Unified Collection Mode (`flashsystem-collector collect`)
 1. **Entry & CLI Parsing**: `main.go` parses CLI flags and environment variables (`FS_*`) using `config.Load()`. Precedence is strictly: **CLI flags > Environment variables > Built-in defaults**.
 2. **Validation**: Enforces strict mutual exclusivity of authentication (either `-keyfile` or `-password`, never both or neither), POSIX file permissions (`0600` for keyfile, `perm & 0022 == 0` for known_hosts), valid port (1–65535), and minimum TTL thresholds.
-3. **Cache Initialization**: Initializes cache instance for the target storage host (`flashsystem_<sanitized_host>.cache.json`). Purges expired disk entries.
-4. **SSH Connection**: Establishes a single TCP dial and SSH handshake using `internalssh.NewClient()`.
-   - **On SSH Failure**: Intercepts error, invokes `buildFromStaleCache()`, populates metrics from stale entries if present on disk, sets `status.success: false`, and outputs valid diagnostic JSON.
+3. **Cache Initialization**: Initializes cache instance for the target storage host (`flashsystem_<sanitized_host>.cache.json`). Does *not* purge immediately, ensuring existing expired entries remain available for stale fallback if SSH fails.
+4. **SSH Connection & Cache Purge**: Establishes a single TCP dial and SSH handshake using `internalssh.NewClient()`.
+   - **On SSH Failure**: Intercepts error, invokes `buildFromStaleCache()`, populates metrics from stale entries if present on disk and younger than `maxStaleAge` (24h), sets `status.success: false`, and outputs valid diagnostic JSON without crashing.
+   - **On SSH Success**: Defers `client.Close()`, executes `cache.Purge()` to safely discard expired entries now that live querying is guaranteed, and proceeds with collection.
 5. **Collector Registration**: `collectors.AllCollectors()` instantiates all 12 collectors with their respective TTLs (`metricsTTL`, `discoveryTTL`, `performanceTTL`).
 6. **Concurrent Runner Execution**: `collectors.NewRunner(3)` executes registered collectors concurrently:
    - For each collector: checks cache for fresh data (`cache.Get()`). If hit, returns cached records immediately without SSH.
@@ -109,8 +110,11 @@ Before making any modifications in this repository, every agent **must**:
 #### 2. Discovery Mode (`flashsystem-collector discover -category <cat>`)
 1. **Validation**: Verifies that `-category` matches one of the 8 valid categories: `drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`.
 2. **Cache Check**: Checks discovery cache key (`<host>:discovery:<category>`). If valid, immediately outputs `{"data": [...]}` JSON and terminates.
-3. **SSH Dial**: On cache miss, establishes SSH connection. If SSH fails, emits `{"data":[]}` (empty LLD) to `stdout` and logs error to `stderr` (preventing Zabbix from dropping discovered entities during transient network outages).
-4. **Execution & LLD Formatting**: Runs the targeted collector, maps parsed records to Zabbix macros (`{#DRIVEID}`, `{#POOLNAME}`, etc.), caches the result with `DiscoveryTTL` (default 4h), and emits RFC-compliant LLD JSON.
+3. **SSH Dial & Stale Fallback**: On cache miss, establishes SSH connection.
+   - If SSH dial fails: checks for stale discovery cache (`cache.GetStale()`). If found and cached within `maxStaleAge` (24h), emits cached LLD JSON. Otherwise emits `{"data":[]}` (empty LLD) to `stdout` and logs error to `stderr` (preventing Zabbix from dropping discovered entities during transient network outages).
+4. **Execution & LLD Formatting**: Runs the targeted collector.
+   - If the collector fails: attempts stale cache fallback (subject to `maxStaleAge`).
+   - On success: maps parsed records to Zabbix macros (`{#DRIVEID}`, `{#POOLNAME}`, etc., defaulting missing mapped fields to `""`), caches the result with `DiscoveryTTL` (default 4h), and emits RFC-compliant LLD JSON.
 
 ---
 
@@ -257,9 +261,12 @@ git diff --check
    - Metrics TTL (`FS_METRICS_TTL`): Default `5m` (general telemetry).
    - Discovery TTL (`FS_DISCOVERY_TTL`): Default `4h` (hardware inventory discovery).
    - Performance TTL (`FS_PERFORMANCE_TTL` / `FS_PERF_TTL`): Default `1m`, minimum `1s`.
-4. **Stale Cache Fallback**:
+4. **Stale Cache Fallback & Age Limit**:
    - When SSH connectivity fails, `main.go` and `Runner` attempt to retrieve expired cached entries (`c.GetStale()`).
-   - Diagnostic error message is recorded: `"SSH failed (stale cache from <timestamp>): <error>"`.
+   - **24-Hour Maximum Age Bound**: Stale entries older than 24 hours (`maxStaleAge = 24 * time.Hour`, configured via `RunnerConfig.MaxStaleAge`) must be strictly rejected, returning empty slices and an explanatory diagnostic error rather than misleading days-old stale metrics.
+   - Diagnostic error message is recorded: `"SSH failed (stale cache from <timestamp>): <error>"` (or `"SSH failed and stale cache expired (older than 24h0m0s, cached at ...): <error>"` when past the boundary).
+5. **Cache Purge Timing**:
+   - `Purge()` is strictly invoked *after* successful SSH dial/handshake, ensuring that any stale cache entries present on disk remain intact to serve as emergency fallback if the network or storage interface is unreachable.
 
 ---
 

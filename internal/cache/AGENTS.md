@@ -13,6 +13,7 @@ This directory implements the disk-backed, thread-safe, persistent JSON caching 
   - Discovery TTL (default 4h)
   - Performance TTL (default 1m)
 - **Stale Data Fallback**: Provides `GetStale(key)` to retrieve expired entries when SSH connectivity to the storage system fails.
+- **Cache File Security**: Enforces strict POSIX permissions (`0600`) upon cache write/rename and validates that existing cache files are regular files without group/world permissions (`perm & 0077 == 0`). Prevents path traversal via token sanitization.
 
 ---
 
@@ -27,9 +28,11 @@ This directory implements the disk-backed, thread-safe, persistent JSON caching 
 - `MakeKey(host, collector)` -> returns `"<host>:<collector>"`
 - `MakeDiscoveryKey(host, category)` -> returns `"<host>:discovery:<category>"`
 - `Get(key)` -> Returns entry if found and `time.Now().Before(ExpiresAt)`.
-- `GetStale(key)` -> Returns entry if found regardless of expiration status.
+- `GetStale(key)` -> Returns entry if found regardless of expiration status. Caller verifies entry age against `maxStaleAge` (24h).
 - `Set(key, value, ttl)` -> Serializes value, sets expiration, updates map, and flushes atomically to disk.
-- `Purge()` -> Removes all expired entries from disk state.
+- `Purge()` -> Removes all expired entries from disk state. Invoked by caller (`main.go`) only after a successful SSH connection to safeguard stale fallback.
+- `Delete(key)` -> Removes a specific key from the cache.
+- `Len()` -> Returns the count of entries in memory.
 
 ---
 
@@ -45,6 +48,10 @@ This directory implements the disk-backed, thread-safe, persistent JSON caching 
    - Hold `c.mu.Lock()` for write operations (`Set`, `Purge`, disk saves).
 4. **Error Resilience**:
    - Cache errors must never crash the collector. If cache reads/writes fail, log warning/debug messages and permit execution to proceed via direct SSH query.
+5. **Lifecycle & Purge Timing**:
+   - Never call `Purge()` before verifying SSH reachability. Calling `Purge()` prematurely wipes stale entries needed for emergency fallback if SSH fails.
+6. **Stale Age Limit Contract**:
+   - Consumers of `GetStale()` must enforce a maximum stale age boundary (`24 * time.Hour`). Stale data older than 24 hours must be rejected.
 
 ---
 
