@@ -11,7 +11,7 @@ This directory contains the `Collector` interface, individual resource collector
   - `Collect(client *internalssh.Client) ([]parser.Record, error)`: Executes `svcinfo` command via SSH and returns parsed key-value map records.
   - `TTL() time.Duration`: Defines the cache validity duration for this resource (`metricsTTL`, `discoveryTTL`, or `performanceTTL`).
 - **Runner Orchestration**: `Runner.RunAll()` executes registered collectors in parallel with semaphore concurrency throttling (`MaxConcurrent: 3`).
-- **Cache Lifecycle**: Checks cache first before executing SSH commands; stores successful results; returns stale cache on SSH failures.
+- **Cache Lifecycle & Stale Bounds**: Checks cache first before executing SSH commands; stores successful results; returns stale cache on SSH failures only if cached within `MaxStaleAge` (default 24h).
 - **Fallback Logic**: Handles firmware differences (e.g., modern `lsreplicationrelationship` falling back to legacy `lsrcrelationship`).
 
 ---
@@ -50,10 +50,13 @@ All 12 resource collectors must be instantiated and registered in `AllCollectors
 3. **Error Isolation**:
    - A single failing collector must never halt other collectors or cause a panic.
    - Return errors explicitly from `Collect()`; `Runner` captures them into `Result.Error`.
-4. **Data Contract**:
+4. **Stale Age Limit Enforcement**:
+   - `RunnerConfig.MaxStaleAge` defaults to `24 * time.Hour`.
+   - In `runCollector()`, if an SSH command fails, `Runner` queries `c.GetStale(key)`. If `time.Since(entry.CachedAt) > r.cfg.MaxStaleAge`, the stale entry is discarded, and an empty record set with an error is returned.
+5. **Data Contract**:
    - `Collect()` must return `[]parser.Record` where `parser.Record` is `map[string]string`.
    - If no resources are found (empty system response or CMMVC code), return an empty slice `[]parser.Record{}`, not `nil`.
-5. **Exact Capacities**:
+6. **Exact Capacities**:
    - `pools` (`lsmdiskgrp`) and `volumes` (`lsvdisk`) must execute with `-bytes -delim :` to retrieve exact 64-bit integer capacities.
    - `drives` (`lsdrive`) must format capacities using `parser.FormatCapacity` (base-2 binary: GB if $< 1\text{ TB}$, TB if $\ge 1\text{ TB}$).
 
