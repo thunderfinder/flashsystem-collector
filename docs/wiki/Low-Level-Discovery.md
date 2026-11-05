@@ -126,5 +126,6 @@ func emitEmptyLLD() {
 ```
 
 - **Unknown Category**: If an invalid category name is requested, the collector logs the error to `stderr` and emits `{"data":[]}`.
-- **SSH Failure**: If SSH connectivity fails and no cached discovery data exists, the collector logs the failure to `stderr` and emits `{"data":[]}`.
-- **Result in Zabbix**: Zabbix receives a valid JSON object with zero items. Existing discovered prototypes enter the "Lost resources" grace period (governed by Zabbix's `Keep lost resources period` setting, typically 30 days) instead of being prematurely purged.
+- **SSH Failure or Collector Error with Stale Fallback**: If SSH connectivity or collector execution fails, the collector checks for existing cached discovery data via `c.GetStale(cacheKey)`. If an entry exists and is within the 24-hour retention ceiling (`time.Since(entry.CachedAt) <= 24h`), it serves the stale discovery items and logs a warning to `stderr` (`"serving stale discovery cache from ..."`).
+- **Outage Beyond 24 Hours or Empty Cache**: If no discovery cache exists or the stale data exceeds 24 hours, the collector logs the failure to `stderr` and emits `{"data":[]}`.
+- **Result in Zabbix**: When stale data is served, discovered items continue being evaluated without interruption. When empty LLD (`{"data":[]}`) is emitted, Zabbix keeps discovered prototypes in the "Lost resources" grace period (governed by Zabbix's `Keep lost resources period` setting, typically 30 days) instead of prematurely deleting them.

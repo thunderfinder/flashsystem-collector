@@ -129,20 +129,22 @@ sequenceDiagram
     Wrapper->>Wrapper: Source env file & acquire flock
     Wrapper->>Collector: Execute flashsystem-collector collect
     Collector->>Collector: Load & validate configuration
-    Collector->>Disk: Purge expired cache entries
-    Collector->>Disk: Check cache keys for all 12 collectors
-    alt All Cache Hits Valid
-        Disk-->>Collector: Return cached records
-    else Cache Misses Detected
-        Collector->>Array: Dial SSH & perform host-key verification
-        loop For each miss (bounded by semaphore)
-            Collector->>Array: Execute svcinfo <cmd> -delim :
-            Array-->>Collector: Colon-delimited output stream
-            Collector->>Collector: Parse output into []parser.Record
-            Collector->>Disk: Write new records to cache (Atomic Rename)
+    Collector->>Array: Dial SSH & perform host-key verification
+    alt SSH Connection Successful
+        Collector->>Disk: Purge expired cache entries (post-connection)
+        loop For each collector (bounded by semaphore)
+            Collector->>Disk: Check cache keys
+            alt Cache Hit
+                Disk-->>Collector: Return unexpired records
+            else Cache Miss
+                Collector->>Array: Execute svcinfo <cmd> -delim :
+                Array-->>Collector: Colon-delimited output stream
+                Collector->>Collector: Parse output into []parser.Record
+                Collector->>Disk: Write new records to cache (Atomic Rename)
+            end
         end
     else SSH Failure Occurred
-        Collector->>Disk: Retrieve expired stale entries (GetStale)
+        Collector->>Disk: Retrieve stale entries <= 24h (GetStale)
         Disk-->>Collector: Stale records loaded
         Collector->>Collector: Tag result with Stale Warning
     end

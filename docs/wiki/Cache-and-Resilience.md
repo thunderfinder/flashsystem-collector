@@ -65,16 +65,30 @@ sequenceDiagram
 
     Z->>C: Execute collect (every 1m)
     C->>S: SSH Handshake & Connect
-    Note over S: Controller in reboot / network timeout
-    S--xC: Dial Timeout / Connection Refused
-    Note over C: Trigger Stale Fallback Logic
-    C->>D: Invoke c.GetStale(host)
-    D-->>C: Return last known records (even if expired)
-    C->>C: Set CacheHit=true
-    C->>C: Populate Error="SSH failed (stale cache from <timestamp>): <err>"
-    C-->>Z: Emit Valid JSON Payload + Error Warning
-    Note over Z: Zabbix maintains history graph continuity; alerts on connection error
+    alt SSH Failure (Timeout / Connection Refused)
+        Note over C: Trigger Stale Fallback Logic
+        C->>D: Invoke c.GetStale(key)
+        D-->>C: Return last known records
+        alt Entry Age <= 24 Hours (maxStaleAge)
+            C->>C: Set CacheHit=true
+            C->>C: Populate Error="SSH failed (stale cache from <timestamp>): <err>"
+            C-->>Z: Emit Valid JSON Payload + Error Warning
+        else Entry Age > 24 Hours
+            C->>C: Reject stale data (records: [])
+            C->>C: Populate Error="SSH failed and stale cache expired (older than 24h0m0s...)"
+            C-->>Z: Emit Empty Resource Array + Stale Expiry Warning
+        end
+    else SSH Handshake Succeeded
+        Note over C: Purge expired cache only after connection verified
+        C->>D: Execute c.Purge()
+        C->>S: Execute collector queries
+    end
 ```
+
+### 24-Hour Stale Age Bound (`maxStaleAge`)
+To prevent serving dangerously outdated metrics or decommissioned infrastructure after extended storage outages, the collector enforces an upper bound of 24 hours (`maxStaleAge = 24 * time.Hour`) across both `collect` and `discover` modes:
+- **Entries $\le$ 24 hours**: Returned with `CacheHit=true` and an annotated diagnostic warning (`"SSH failed (stale cache from <timestamp>): <err>"`).
+- **Entries $>$ 24 hours**: Discarded. The collector populates `records: []` and records an error noting that stale data exceeded the 24-hour retention ceiling (`"SSH failed and stale cache expired (older than 24h0m0s, cached at ...): <err>"`).
 
 ### Stale Warning Annotation
 When serving stale data, the collector clearly marks the payload in `status.collector_runs`:
@@ -90,10 +104,11 @@ This allows Zabbix administrators to fire a single alert ("Storage management in
 
 ---
 
-## 4. Automatic Startup Purge
+## 4. Post-Connection Cache Purge
 
-To prevent cache files from growing indefinitely with stale or decommissioned host records, the collector invokes `cache.Purge()` at the beginning of every collection run:
+To prevent cache files from growing indefinitely while strictly protecting stale-data fallback availability during outages, the collector invokes `cache.Purge()` **only after a successful SSH connection is established**:
 
-- Iterates over all cached entries in memory.
+- If SSH connection fails, `cache.Purge()` is skipped so expired entries remain available on disk for `buildFromStaleCache()`.
+- Once SSH connects successfully, `cache.Purge()` iterates over all cached entries in memory.
 - Identifies entries whose `CachedAt + TTL` is in the past.
 - Removes obsolete records from the disk store.

@@ -372,8 +372,8 @@ The collector executes the following native CLI commands via `svcinfo` using col
 
 - **Cache File Location**: `<cache-dir>/flashsystem_<sanitized_host>.cache.json` (e.g., `/var/tmp/flashsystem_10.10.10.50.cache.json`).
 - **Atomic Writes**: Written to a temporary file (`.flashsystem_cache_*.tmp`) and renamed atomically (`os.Rename`), preventing file corruption if interrupted.
-- **Cache Purge**: Expired entries are automatically purged at the start of each `collect` execution.
-- **Stale Fallback**: If an SSH connection failure occurs during `collect`, the collector reads existing cache entries regardless of expiration. It produces a valid JSON response tagged with `"SSH failed (stale cache from <timestamp>)"`, ensuring monitoring graphs do not drop to zero and triggers with evaluation windows do not falsely fire.
+- **Post-Connection Cache Purge**: Expired entries are purged (`c.Purge()`) only after a successful SSH connection is established. This preserves stale fallback entries on disk if the storage array is unreachable or experiencing a management network outage.
+- **Stale Fallback with 24-Hour Upper Bound (`maxStaleAge`)**: If an SSH connection or collector failure occurs during `collect` or `discover`, the collector serves the last-known cached data as long as it was recorded within 24 hours (`maxStaleAge = 24h`). Entries older than 24 hours are rejected to prevent reporting dangerously obsolete metrics or decommissioned infrastructure. Stale payloads are tagged with `"SSH failed (stale cache from <timestamp>)"`, keeping monitoring graphs continuous while alerting operators to the connectivity outage.
 
 ---
 

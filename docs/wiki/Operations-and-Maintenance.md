@@ -76,7 +76,7 @@ For enterprise environments requiring compression and multi-week log retention, 
 
 ## 3. Cache Maintenance and Purge Procedures
 
-Under normal operations, the collector automatically purges expired cache records at the start of each run. However, manual cache clearing may be desirable after major storage reconfigurations (e.g., mass drive replacements or storage pool consolidations).
+Under normal operations, the collector automatically purges expired cache records after establishing a successful SSH connection on each `collect` execution. Expired entries are retained for up to 24 hours to serve as stale fallback if storage connectivity fails. However, manual cache clearing may be desirable after major storage reconfigurations (e.g., mass drive replacements or storage pool consolidations).
 
 ### Inspecting Cache Files
 Cache files are named by sanitized host in `/var/tmp`:
