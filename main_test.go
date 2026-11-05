@@ -2,18 +2,28 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/flashsystem-collector/internal/cache"
 	"github.com/flashsystem-collector/internal/config"
 	"github.com/flashsystem-collector/internal/parser"
+	internalssh "github.com/flashsystem-collector/internal/ssh"
+	"github.com/flashsystem-collector/internal/zabbix"
+	"golang.org/x/crypto/ssh"
 )
 
 func TestEscapeJSONString(t *testing.T) {
@@ -221,5 +231,353 @@ func TestRunDiscoveryCollectorInvalidCategory(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unknown discovery category") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestBuildFromStaleCacheCorrupted(t *testing.T) {
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "corrupt.cache.json")
+	c := cache.New(cachePath)
+
+	host := "10.0.0.10"
+	cfg := &config.Config{
+		SSH: config.SSHConfig{Host: host},
+		Limits: config.LimitsConfig{
+			MaxJSONBytes: 1048576,
+			MaxVolumes:   500,
+			MaxDrives:    500,
+		},
+	}
+
+	key := cache.MakeKey(host, "system")
+	// Save entry where the Value is valid JSON (so the cache file unmarshals fine with Version: "1")
+	// but cannot unmarshal into []parser.Record (e.g. integer or invalid structure for records)
+	recentTime := time.Now().Add(-10 * time.Minute)
+	entry := cache.Entry{
+		Key:       key,
+		Value:     []byte(`{"unexpected": "not_an_array_of_records"}`),
+		CachedAt:  recentTime,
+		ExpiresAt: recentTime.Add(5 * time.Minute),
+	}
+	cacheData := struct {
+		Version   string                 `json:"version"`
+		UpdatedAt time.Time              `json:"updated_at"`
+		Entries   map[string]cache.Entry `json:"entries"`
+	}{
+		Version:   "1",
+		UpdatedAt: recentTime,
+		Entries:   map[string]cache.Entry{key: entry},
+	}
+	data, _ := json.Marshal(cacheData)
+	if err := os.WriteFile(cachePath, data, 0600); err != nil {
+		t.Fatalf("failed to write corrupted cache file: %v", err)
+	}
+
+	c = cache.New(cachePath)
+	startTime := time.Now()
+	sshErr := errors.New("ssh dial timeout")
+
+	out := buildFromStaleCache(c, cfg, startTime, sshErr)
+	if out == nil {
+		t.Fatal("expected non-nil output")
+	}
+	if string(out.System) != "[]" {
+		t.Errorf("expected system records to be empty [] on corruption, got: %s", string(out.System))
+	}
+	var foundError bool
+	for _, run := range out.Status.CollectorRuns {
+		if run.Name == "system" && strings.Contains(run.Error, "cache corrupted") {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Errorf("expected collector run for system to report cache corrupted, got: %+v", out.Status.CollectorRuns)
+	}
+}
+
+func TestEmitJSON(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	out := &zabbix.Output{
+		Host:      "fs.example.com",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Version:   version,
+		Status: zabbix.CollectionStatus{
+			Success: true,
+		},
+	}
+
+	emitJSON(out)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if !strings.Contains(output, `"host": "fs.example.com"`) {
+		t.Errorf("expected host in JSON output, got: %s", output)
+	}
+}
+
+func setupLoopbackSSHDiscoveryServer(t *testing.T, handler func(cmd string) (stdout string, stderr string, exitCode uint32)) (*internalssh.Client, func()) {
+	t.Helper()
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate host key: %v", err)
+	}
+	signer, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		t.Fatalf("failed to create signer: %v", err)
+	}
+
+	serverConfig := &ssh.ServerConfig{
+		PasswordCallback: func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+			return nil, nil
+		},
+	}
+	serverConfig.AddHostKey(signer)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen on loopback: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	stopped := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			tcpConn, err := listener.Accept()
+			if err != nil {
+				select {
+				case <-stopped:
+					return
+				default:
+					return
+				}
+			}
+
+			go func(c net.Conn) {
+				sshConn, chans, reqs, err := ssh.NewServerConn(c, serverConfig)
+				if err != nil {
+					return
+				}
+				go ssh.DiscardRequests(reqs)
+
+				for newChannel := range chans {
+					if newChannel.ChannelType() != "session" {
+						_ = newChannel.Reject(ssh.UnknownChannelType, "unknown channel type")
+						continue
+					}
+					ch, requests, err := newChannel.Accept()
+					if err != nil {
+						continue
+					}
+
+					go func(channel ssh.Channel, reqs <-chan *ssh.Request) {
+						defer channel.Close()
+						for req := range reqs {
+							if req.Type == "exec" {
+								if len(req.Payload) < 4 {
+									_ = req.Reply(false, nil)
+									return
+								}
+								cmdLen := binary.BigEndian.Uint32(req.Payload[:4])
+								cmd := string(req.Payload[4 : 4+cmdLen])
+								_ = req.Reply(true, nil)
+
+								stdout, stderr, exitCode := handler(cmd)
+								if stdout != "" {
+									_, _ = io.WriteString(channel, stdout)
+								}
+								if stderr != "" {
+									_, _ = io.WriteString(channel.Stderr(), stderr)
+								}
+
+								status := struct{ Status uint32 }{exitCode}
+								_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(&status))
+								return
+							}
+							_ = req.Reply(false, nil)
+						}
+					}(ch, requests)
+				}
+				_ = sshConn.Close()
+			}(tcpConn)
+		}
+	}()
+
+	host, portStr, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		t.Fatalf("failed to split host port: %v", err)
+	}
+	port, _ := strconv.Atoi(portStr)
+
+	client, err := internalssh.New(internalssh.ClientConfig{
+		Host:            host,
+		Port:            port,
+		User:            "monitor",
+		Password:        "secret",
+		DialTimeout:     2 * time.Second,
+		CommandTimeout:  2 * time.Second,
+		InsecureHostKey: true,
+	})
+	if err != nil {
+		_ = listener.Close()
+		close(stopped)
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	cleanup := func() {
+		_ = client.Close()
+		close(stopped)
+		_ = listener.Close()
+		wg.Wait()
+	}
+
+	return client, cleanup
+}
+
+func TestRunDiscoveryCollectorValidCategories(t *testing.T) {
+	cmdResponses := map[string]string{
+		"svcinfo lsdrive -delim :":                     "id:status:capacity:enclosure_id:slot_id:tech_type\n0:online:960247313203:1:1:flash\n",
+		"svcinfo lsmdiskgrp -bytes -delim :":           "id:name:status:capacity\n10:pool_tier0:online:1099511627776\n",
+		"svcinfo lsvdisk -bytes -delim :":              "id:name:status:mdisk_grp_name\n100:vol_db_01:online:pool_tier0\n",
+		"svcinfo lsenclosure -delim :":                 "id:status:product_MTM\n1:online:2076-24F\n",
+		"svcinfo lsnode -delim :":                      "id:name:status:IO_group_name\n1:node_canister_1:online:io_grp0\n",
+		"svcinfo lsportfc -delim :":                    "id:WWPN:status:node_name:port_speed\n1:500507680100ABCD:active:node_canister_1:16Gb\n",
+		"svcinfo lsenclosurebattery -delim :":          "enclosure_id:battery_id:status:percent_charged:end_of_life_warning:recondition_needed\n1:1:online:98:no:no\n",
+		"svcinfo lsenclosurepsu -delim :":              "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
+	}
+
+	client, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
+		if resp, ok := cmdResponses[cmd]; ok {
+			return resp, "", 0
+		}
+		return "", fmt.Sprintf("unrecognized discovery command %s", cmd), 1
+	})
+	defer cleanup()
+
+	cfg := &config.Config{
+		Cache: config.CacheConfig{
+			DiscoveryTTL: 4 * time.Hour,
+			MetricsTTL:   5 * time.Minute,
+		},
+	}
+
+	testCases := []struct {
+		category       string
+		expectedMacro  string
+		expectedVal    string
+		expectedRecord int
+	}{
+		{
+			category:       "drives",
+			expectedMacro:  "{#DRIVEID}",
+			expectedVal:    "0",
+			expectedRecord: 1,
+		},
+		{
+			category:       "pools",
+			expectedMacro:  "{#POOLNAME}",
+			expectedVal:    "pool_tier0",
+			expectedRecord: 1,
+		},
+		{
+			category:       "volumes",
+			expectedMacro:  "{#VOLUMENAME}",
+			expectedVal:    "vol_db_01",
+			expectedRecord: 1,
+		},
+		{
+			category:       "enclosures",
+			expectedMacro:  "{#ENCLOSUREMODEL}",
+			expectedVal:    "2076-24F",
+			expectedRecord: 1,
+		},
+		{
+			category:       "nodes",
+			expectedMacro:  "{#NODENAME}",
+			expectedVal:    "node_canister_1",
+			expectedRecord: 1,
+		},
+		{
+			category:       "ports",
+			expectedMacro:  "{#PORTSTATUS}",
+			expectedVal:    "active",
+			expectedRecord: 1,
+		},
+		{
+			category:       "batteries",
+			expectedMacro:  "{#BATTERYCHARGE}",
+			expectedVal:    "98",
+			expectedRecord: 1,
+		},
+		{
+			category:       "psus",
+			expectedMacro:  "{#PSUID}",
+			expectedVal:    "1",
+			expectedRecord: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.category, func(t *testing.T) {
+			records, fieldMap, err := runDiscoveryCollector(client, tc.category, cfg)
+			if err != nil {
+				t.Fatalf("runDiscoveryCollector failed for %s: %v", tc.category, err)
+			}
+			if len(records) != tc.expectedRecord {
+				t.Fatalf("expected %d records for %s, got %d", tc.expectedRecord, tc.category, len(records))
+			}
+			if len(fieldMap) == 0 {
+				t.Fatalf("expected non-empty fieldMap for %s", tc.category)
+			}
+
+			// Validate conversion to Zabbix LLD items
+			lldItems := recordsToLLDItems(records, fieldMap)
+			if len(lldItems) != tc.expectedRecord {
+				t.Fatalf("expected %d LLD items for %s, got %d", tc.expectedRecord, tc.category, len(lldItems))
+			}
+
+			item := lldItems[0]
+			val, ok := item[tc.expectedMacro]
+			if !ok {
+				t.Fatalf("macro %s missing from LLD item: %+v", tc.expectedMacro, item)
+			}
+			if val != tc.expectedVal {
+				t.Errorf("macro %s = %q, expected %q", tc.expectedMacro, val, tc.expectedVal)
+			}
+		})
+	}
+}
+
+func TestRunDiscoveryCollectorExecutionFailure(t *testing.T) {
+	client, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
+		return "", "CMMVC5753E connection lost or command error", 1
+	})
+	defer cleanup()
+
+	cfg := &config.Config{
+		Cache: config.CacheConfig{
+			DiscoveryTTL: 4 * time.Hour,
+			MetricsTTL:   5 * time.Minute,
+		},
+	}
+
+	_, _, err := runDiscoveryCollector(client, "drives", cfg)
+	if err == nil {
+		t.Fatal("expected error on command failure, got nil")
+	}
+	if !strings.Contains(err.Error(), `collector "drives" failed`) {
+		t.Errorf("unexpected error format: %v", err)
 	}
 }
