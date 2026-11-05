@@ -35,3 +35,32 @@ Executed complete verification suite against mainline:
 ### 3. Conclusion & Health Status
 
 Repository is in excellent health: fully tested, race-clean, secure, buildable, properly documented, and production ready.
+
+## 2026-11-05 - Post-Release Maintenance Audit and Mainline Health Verification
+
+**Mission:** Complete repository health verification following merge of PR #43 (`fix(cache): preserve stale fallback on SSH failure and enforce 24h stale age bound`) and PR #42 (`fix(discover): stale cache resilience + shell env passthrough + docs alignment`).
+
+### 1. Mainline Integration & Pull Request Status
+- **Mainline Reference:** Commit `aead2c65357cf1784be60b7d257382aa9a2b059e` (`Merge pull request #43 from thunderfinder/fix/stale-cache-purge-and-age-limit-9640584331754498502`).
+- **Open PR Audit:** No open pull requests or pending PR comments are active.
+- **Stale Branches:** Remote tracking branches (such as `origin/jules-7464357433975067751-de20151c` and older feature branches) are completely superseded by merged commits on `main`.
+
+### 2. Mainline Verification Matrix
+- **Test Suite & Race Detector:** `go test -race ./...` (All tests pass across root `github.com/flashsystem-collector`, `internal/cache`, `internal/collectors`, `internal/config`, `internal/parser`, `internal/ssh`, and `internal/zabbix`).
+- **Static Vetting:** `go vet ./...` (0 warnings or errors).
+- **Format & Whitespace:** `git diff --check` (Clean; 0 trailing whitespace or formatting defects).
+- **Workflow Integrity:**
+  - `actionlint`: 0 syntax or schema warnings across all 10 GitHub Actions workflows.
+  - `zizmor`: 0 findings across all workflows using `.github/zizmor.yml`.
+- **Deadcode Analysis:**
+  - `deadcode ./...` identifies `Cache.Delete`, `Cache.Len`, `MarshalRecords`, `Format.String`, `GetField`, `GetFieldLower`, and `LLDOutput`.
+  - All identified functions constitute documented public API contracts tested by unit tests; zero unexported dead code exists.
+- **Production Static Build:**
+  - `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o flashsystem-collector .` produces valid static Linux binary reporting version `2.0.0`.
+- **Production Shell Wrapper:**
+  - `bash -n scripts/flashsystem_collector.sh` passes syntax verification with correct environment variable passthrough (`FS_DIAL_TIMEOUT`, `FS_CMD_TIMEOUT`, `FS_MAX_JSON_BYTES`, `FS_MAX_VOLUMES`, `FS_MAX_DRIVES`).
+- **Zabbix Template Conformity:**
+  - Verified 77 UUIDs conforming strictly to 32 hex characters in `template/IBM FlashSystem Collector.yaml`.
+
+### 3. Conclusion & Health Status
+The repository is clean, reliable, secure, fully tested with race detection, and production ready.
