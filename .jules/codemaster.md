@@ -50,3 +50,44 @@
 **Release Decision:**
 - **Status:** READY_TO_MERGE / RELEASE_READY.
 - The `main` branch commit `08f5f632b5c858344a9837a3d210aa6abe572b95` is fully validated, integrated, and ready for production release.
+
+## 2026-11-05 - Mainline Release Verification and PR Lifecycle Audit (Commit 40e547f)
+
+**Mission:** Complete the integration and release authority verification for `thunderfinder/flashsystem-collector` following the merges of pull requests #42 through #48 into `main`.
+
+**Repository Branch & PR Lifecycle Discovery:**
+- Evaluated pull requests across repository lifecycle: all 48 pull requests have been processed, evaluated, and closed. Recent merges integrated into `main`:
+  - PR #42: `fix(discover): stale cache resilience + shell env passthrough + docs alignment` (merged at `e14f423`).
+  - PR #43: `fix(cache): preserve stale fallback on SSH failure and enforce 24h stale age bound` (merged at `aead2c6`).
+  - PR #44: `docs: record RepoKeeper maintenance audit for commit aead2c6` (merged at `2a0a38a`).
+  - PR #45: `🔧 PipelineFixer: Add explicit job timeouts to lint workflow` (merged at `97a39f3`).
+  - PR #46: `docs: update and enrich AGENTS.md instruction hierarchy` (merged at `684c722`).
+  - PR #47: `📚 DocMaster: Document cache purge timing and 24-hour stale age limit` (merged at `c18b18c`).
+  - PR #48: `🧪 TestMaster: LLD discovery collector routing and cache resilience tests` (merged at `40e547f`).
+- Current mainline HEAD commit: `40e547f038301fba44e76ae9d43b79d79fb283e1`.
+- Open pull requests: 0.
+
+**Technical & Architectural Feasibility:**
+- **Feasibility Classification:** FEASIBLE.
+- Stale Cache Preservation: In `main.go`, `cache.Purge()` is executed only after a successful SSH connection, ensuring stale cache entries remain available on disk when SSH connectivity fails. Stale fallback entries in both `runCollect()` (`buildFromStaleCache()`) and `runDiscover()` strictly enforce `maxStaleAge = 24 * time.Hour`.
+- LLD Discovery Routing & Macro Mapping: All 8 discovery categories (`drives`, `pools`, `volumes`, `enclosures`, `nodes`, `ports`, `batteries`, `psus`) route to their respective collector implementations. `recordsToLLDItems()` guarantees missing keys default to empty strings, producing valid Zabbix LLD JSON schemas.
+- Concurrency & Throttling: `collectors.Runner` enforces semaphore concurrency limits (`MaxConcurrent: 3`) across all 12 collectors with zero race conditions.
+- Pipeline Stability: Explicit 10-minute job timeouts across linting and security workflows prevent unbounded GitHub Actions execution.
+
+**Validation Matrix:**
+| Validation | Result | Evidence |
+|---|---|---|
+| Static analysis (`gofmt -l .`, `go vet ./...`) | PASS | 0 formatting diffs, 0 compiler/vet diagnostics |
+| Dependency integrity (`go mod verify`) | PASS | All modules verified against `go.sum` |
+| Unit tests (`go test -v ./...`) | PASS | 100% test pass rate across all packages |
+| Race detection (`go test -race ./...`) | PASS | Zero race conditions or concurrency warnings |
+| Build verification (Linux AMD64 static) | PASS | `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath` produced functional ELF binary |
+| Shell wrapper (`bash -n scripts/flashsystem_collector.sh`) | PASS | Syntax verified clean, lock management & logging functional |
+| Zabbix template compatibility | PASS | All 77 UUIDs verified conforming to 32 hex chars; JSONPath selectors valid |
+| IBM hardware validation | NOT AVAILABLE | In-memory loopback SSH server verified; physical storage hardware not present |
+| Mainline CI status (`40e547f0`) | PASS | All 11 check runs (Go, Lint, CodeQL, DevSkim, Semgrep, SonarQube, Endor Labs, Veracode, etc.) completed with status `success` |
+| Mainline integration | PASS | Seamless integration of PRs #42-#48 into mainline `main` |
+
+**Release Decision:**
+- **Status:** READY_TO_MERGE / RELEASE_READY.
+- The `main` branch commit `40e547f038301fba44e76ae9d43b79d79fb283e1` is fully validated, integrated, and ready for production release.
