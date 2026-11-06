@@ -16,7 +16,7 @@ This directory contains GitHub Actions workflows defining the Continuous Integra
 ## Engineering Rules & Toolchain Constraints (PipelineFixer Learnings)
 
 1. **Go Version Consistency**:
-   - `go-version` in `go.yml` and `go-ossf-slsa3-publish.yml` must explicitly match Go version specified in `go.mod` (`1.25` / `1.25.0`).
+   - `go-version` in `go.yml`, `codeql.yml`, and `go-ossf-slsa3-publish.yml` must explicitly match Go version specified in `go.mod` (`1.25` / `1.25.0`).
 2. **zizmor Workflow Linter Configuration**:
    - Uses `.github/zizmor.yml` (`unpinned-uses: ref-pin` and `artipacked: false`) to prevent CI failures from tag-pinned actions and read-only checkout tokens.
 3. **DevSkim Action Pinning**:

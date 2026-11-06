@@ -28,6 +28,7 @@ jobs:
     #   - https://gh.io/using-larger-runners (GitHub.com only)
     # Consider using larger runners or machines with greater resources for possible analysis time improvements.
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: 30
     permissions:
       # required for all workflows
       security-events: write
@@ -61,11 +62,11 @@ jobs:
       with:
         persist-credentials: false
 
-    # Add any setup steps before running the `github/codeql-action/init` action.
-    # This includes steps like installing compilers or runtimes (`actions/setup-node`
-    # or others). This is typically only required for manual builds.
-    # - name: Setup runtime (example)
-    #   uses: actions/setup-example@v1
+    - name: Set up Go
+      if: matrix.language == 'go'
+      uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+      with:
+        go-version: '1.25'
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
