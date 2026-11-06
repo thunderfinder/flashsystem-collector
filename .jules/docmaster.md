@@ -47,3 +47,13 @@
 **Learning:** Documentation across `README.md`, `instructions.md`, and several wiki articles incorrectly claimed that `cache.Purge()` executes at the start of every collection run, and described stale cache fallback as serving expired data indefinitely ("regardless of expiration"). In reality, `main.go` invokes `c.Purge()` only after a successful SSH connection is established, which ensures that expired cache entries are preserved on disk if SSH connectivity fails. Furthermore, `main.go` and `internal/collectors/collector.go` enforce a strict 24-hour upper bound (`maxStaleAge = 24 * time.Hour`), rejecting stale entries older than 24 hours to prevent reporting obsolete metrics or decommissioned infrastructure. Additionally, `runDiscover` leverages stale discovery cache within the 24-hour window before falling back to empty LLD `{"data":[]}`.
 
 **Action:** Updated `README.md`, `instructions.md`, and wiki pages (`Cache-and-Resilience.md`, `How-It-Works.md`, `Architecture.md`, `Low-Level-Discovery.md`, `Operations-and-Maintenance.md`, and `Features.md`) to document post-connection cache purge execution, the 24-hour stale age bound (`maxStaleAge = 24h`), and discovery-mode stale recovery.
+
+## 2026-11-06 - Technical Instructions Hardening and Implementation Alignment
+
+**Learning:** `instructions.md` contained several discrepancies with the actual codebase and project security policies:
+1. It cited `Go 1.21` as the minimum Go compiler requirement, conflicting with `go.mod`, GitHub Actions workflows, `README.md`, and `docs/wiki/` which require `Go 1.25.0+`.
+2. It incorrectly claimed in Section 10 ("Limitaciones detectadas") that the binary aborted without checking `~/.ssh/known_hosts`. In reality, `internal/ssh/client.go` includes an automatic fallback to `~/.ssh/known_hosts` (with regular file and POSIX `perm & 0022 == 0` validation) when `FS_KNOWN_HOSTS` is unset before aborting.
+3. Examples across the document consistently promoted `-insecure`, `FS_INSECURE=true`, and `-o StrictHostKeyChecking=no` as standard invocation patterns, obscuring secure production workflows with host-key verification (`FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts`).
+4. Section 3 ("Requisitos identificados") and Section 5 omitted explicit documentation of the strict POSIX permission constraints on private keys (`0600`, `perm & 0077 == 0`) and `known_hosts` (`0644`/`0600`, `perm & 0022 == 0`).
+
+**Action:** Updated `instructions.md` to reflect Go 1.25.0+, accurately document the `~/.ssh/known_hosts` fallback resolution path, detail strict file permission checks for credentials and host keys, and replace insecure defaults with hardened `FS_KNOWN_HOSTS` examples throughout execution, troubleshooting, and verification sections.
