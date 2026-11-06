@@ -448,14 +448,14 @@ func setupLoopbackSSHDiscoveryServer(t *testing.T, handler func(cmd string) (std
 
 func TestRunDiscoveryCollectorValidCategories(t *testing.T) {
 	cmdResponses := map[string]string{
-		"svcinfo lsdrive -delim :":                     "id:status:capacity:enclosure_id:slot_id:tech_type\n0:online:960247313203:1:1:flash\n",
-		"svcinfo lsmdiskgrp -bytes -delim :":           "id:name:status:capacity\n10:pool_tier0:online:1099511627776\n",
-		"svcinfo lsvdisk -bytes -delim :":              "id:name:status:mdisk_grp_name\n100:vol_db_01:online:pool_tier0\n",
-		"svcinfo lsenclosure -delim :":                 "id:status:product_MTM\n1:online:2076-24F\n",
-		"svcinfo lsnode -delim :":                      "id:name:status:IO_group_name\n1:node_canister_1:online:io_grp0\n",
-		"svcinfo lsportfc -delim :":                    "id:WWPN:status:node_name:port_speed\n1:500507680100ABCD:active:node_canister_1:16Gb\n",
-		"svcinfo lsenclosurebattery -delim :":          "enclosure_id:battery_id:status:percent_charged:end_of_life_warning:recondition_needed\n1:1:online:98:no:no\n",
-		"svcinfo lsenclosurepsu -delim :":              "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
+		"svcinfo lsdrive -delim :":            "id:status:capacity:enclosure_id:slot_id:tech_type\n0:online:960247313203:1:1:flash\n",
+		"svcinfo lsmdiskgrp -bytes -delim :":  "id:name:status:capacity\n10:pool_tier0:online:1099511627776\n",
+		"svcinfo lsvdisk -bytes -delim :":     "id:name:status:mdisk_grp_name\n100:vol_db_01:online:pool_tier0\n",
+		"svcinfo lsenclosure -delim :":        "id:status:product_MTM\n1:online:2076-24F\n",
+		"svcinfo lsnode -delim :":             "id:name:status:IO_group_name\n1:node_canister_1:online:io_grp0\n",
+		"svcinfo lsportfc -delim :":           "id:WWPN:status:node_name:port_speed\n1:500507680100ABCD:active:node_canister_1:16Gb\n",
+		"svcinfo lsenclosurebattery -delim :": "enclosure_id:battery_id:status:percent_charged:end_of_life_warning:recondition_needed\n1:1:online:98:no:no\n",
+		"svcinfo lsenclosurepsu -delim :":     "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
 	}
 
 	client, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
