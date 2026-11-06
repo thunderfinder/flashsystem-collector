@@ -23,3 +23,9 @@
 **Learning:** `FormatCapacity` in `internal/parser` was using `regexp.MustCompile` and `FindStringSubmatch` to separate capacity values into a numeric part and an optional unit suffix (e.g., in `lsdrive` where each physical drive capacity is formatted). `FindStringSubmatch` allocates a slice of submatch strings on every call (adding ~560 bytes and 10 allocations per drive line) and executes regex VM state machine transitions. Replacing regexp extraction with manual character scanning (`parseCapacityParts`) reduced memory consumption from 608 B/op to 48 B/op (-92.1%), cut heap allocations from 19 to 9 allocs/op (-52.6%), and accelerated execution time from ~4,970 ns/op to ~1,913 ns/op (-61.5%).
 
 **Action:** Avoid `regexp` matching in row-level parsing and formatting paths; use simple, deterministic character scanning and `strconv.ParseFloat` for extracting structured prefixes/suffixes.
+
+## 2026-11-06 - In-Place Delimiter Scanning for Tabular Headers
+
+**Learning:** `splitTabularLine` in `internal/parser` previously called `strings.Split(line, delim)` followed by an allocation of the filtered result slice. For all tabular svcinfo outputs (`lsvdisk`, `lsdrive`, `lssystemstats`, `lsnode`, `lsenclosure`, etc.), this created an unnecessary intermediate slice allocation and slice backing array. Replacing `strings.Split` with `strings.Count(line, delim)` capacity pre-allocation and in-place `strings.Index` scanning directly into the destination slice cut heap allocations in half (from 2 allocs/op to 1 alloc/op, saving 384 B/op per tabular parse, reducing memory from 768 B to 384 B (-50%)), and accelerated header splitting from ~950 ns/op to ~645 ns/op (-32%).
+
+**Action:** Avoid intermediate `strings.Split` calls when parsing delimited headers or single-line matrices; pre-size destination slices using `strings.Count` and scan tokens in-place using `strings.Index`.

@@ -318,15 +318,28 @@ func buildRecord(headers []string, line string) Record {
 
 // splitTabularLine divide una línea de headers/valores por ":".
 // Trimea espacios de cada elemento.
+// Escanea delimitadores in-place sobre la línea para evitar alocar un slice intermedio con strings.Split.
 func splitTabularLine(line string) []string {
-	parts := strings.Split(line, delim)
-	result := make([]string, 0, len(parts))
-	for _, p := range parts {
-		trimmed := strings.TrimSpace(p)
+	numDelims := strings.Count(line, delim)
+	result := make([]string, 0, numDelims+1)
+
+	rest := line
+	for {
+		idx := strings.Index(rest, delim)
+		if idx < 0 {
+			trimmed := strings.TrimSpace(rest)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+			break
+		}
+		trimmed := strings.TrimSpace(rest[:idx])
 		if trimmed != "" {
 			result = append(result, trimmed)
 		}
+		rest = rest[idx+len(delim):]
 	}
+
 	return result
 }
 
