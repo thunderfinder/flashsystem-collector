@@ -116,8 +116,8 @@ main()
 - El directorio de lock `/var/lock/flashsystem` es usado por el wrapper Bash, no por el binario Go
 
 ### Go
-- Versión mínima: **Go 1.21** (declarado en `go.mod`)
-- Razón: uso de `os.ReadFile()` (1.16+), `any` como alias de `interface{}` (1.18+)
+- Versión mínima: **Go 1.25.0+** (declarado en `go.mod`)
+- Razón: requerido por la definición de dependencias y toolchain (`go 1.25.0`), garantizando compilaciones estáticas reproducibles y compatibilidad con el ecosistema de seguridad de Go.
 
 ### Dependencias externas (go.mod)
 | Módulo | Versión | Uso |
@@ -131,7 +131,8 @@ main()
 
 ### Filesystem
 - Directorio de cache debe ser escribible (default `/var/tmp`)
-- Si se usa SSH key: el archivo `.pem` debe ser legible por el usuario que ejecuta el binario
+- Si se usa SSH key (`FS_KEYFILE` / `-keyfile`): debe ser un archivo regular con permisos POSIX estrictos `0600` (`perm & 0077 == 0`), sin acceso para grupo u otros usuarios.
+- Si se usa `known_hosts` (`FS_KNOWN_HOSTS` / `-known-hosts`): debe ser un archivo regular con permisos no modificables por grupo u otros (`perm & 0022 == 0`, e.g., `0644` o `0600`).
 
 ---
 
@@ -203,13 +204,14 @@ Un flag explícito siempre sobreescribe la variable de entorno correspondiente.
 
 - `host` y `user` son obligatorios — el binario termina con error si faltan
 - Exactamente **uno** de `keyfile` o `password` debe estar configurado — ambos o ninguno son error
-- Si `keyfile` está configurado: el archivo debe existir y ser accesible en el momento de inicio
-- Si `insecure=false` y `known-hosts` está configurado: el archivo debe existir
-- Si `insecure=false` y `known-hosts` está vacío: el binario retorna error (no asume insecure automáticamente)
+- Si `keyfile` está configurado: el archivo debe existir, ser un archivo regular y tener permisos POSIX `0600` (`perm & 0077 == 0`, prohibido acceso a grupo u otros)
+- Si `insecure=false` y `known-hosts` está configurado: el archivo debe existir, ser regular y tener permisos `perm & 0022 == 0` (e.g. `0644` o `0600`, prohibida escritura por grupo u otros)
+- Si `insecure=false` y `known-hosts` no está configurado: en `internal/ssh/client.go` se intenta fallback automático a `~/.ssh/known_hosts` (validando regularidad y permisos). Si tampoco existe o es inaccesible, la conexión falla con error explícito requiriendo `-known-hosts` o `-insecure`
 - `dial-timeout` debe ser >= 1s
 - `cmd-timeout` debe ser >= 1s
 - `metrics-ttl` debe ser >= 1s
 - `discovery-ttl` debe ser >= 1m
+- `performance-ttl` debe ser >= 1s
 - `max-json-bytes` debe ser >= 1024
 - El directorio de cache debe existir y ser escribible (verificado creando un archivo temporal)
 
@@ -219,13 +221,14 @@ El wrapper `flashsystem_collector.sh` carga `/etc/zabbix/flashsystem/env` si exi
 Formato: pares `KEY=VALUE`, líneas con `#` son ignoradas.
 
 ```bash
-# Ejemplo de /etc/zabbix/flashsystem/env
+# Ejemplo de /etc/zabbix/flashsystem/env (Producción endurecida)
 FS_USER=monitor
 FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key
-FS_INSECURE=true
+FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts
 FS_CACHE_DIR=/var/tmp
 FS_METRICS_TTL=5m
 FS_DISCOVERY_TTL=4h
+FS_PERFORMANCE_TTL=1m
 FS_VERBOSE=false
 ```
 
@@ -258,14 +261,14 @@ Si no se provee ningún subcomando (`len(os.Args) < 2`), imprime usage y termina
 ### Ejemplos de ejecución del binario
 
 ```bash
-# Collect con SSH key (recomendado)
+# Collect con SSH key y verificación de host key (recomendado para producción)
 flashsystem-collector collect \
     -host 10.10.10.50 \
     -user monitor \
     -keyfile /etc/zabbix/ssh/flashsystem_key \
-    -insecure
+    -known-hosts /etc/zabbix/ssh/known_hosts
 
-# Collect con password en red aislada
+# Collect con password en red aislada (insecure solo para lab/testing)
 flashsystem-collector collect \
     -host 10.10.10.50 \
     -user monitor \
@@ -274,7 +277,7 @@ flashsystem-collector collect \
 
 # Collect via variables de entorno
 FS_HOST=10.10.10.50 FS_USER=monitor \
-FS_KEYFILE=/etc/zabbix/ssh/fs_key FS_INSECURE=true \
+FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts \
 flashsystem-collector collect
 
 # Discovery de drives
@@ -282,7 +285,7 @@ flashsystem-collector discover \
     -host 10.10.10.50 \
     -user monitor \
     -keyfile /etc/zabbix/ssh/flashsystem_key \
-    -insecure \
+    -known-hosts /etc/zabbix/ssh/known_hosts \
     -category drives
 
 # Ver versión
@@ -563,8 +566,8 @@ El binario acepta exactamente un `-host` por ejecución. Para monitorear múltip
 ### Campos de Record son siempre strings
 El parser retorna todos los valores como `string`. No hay conversión automática a tipos numéricos. Las expresiones JSONPath en Zabbix deben manejar que valores como `"read_io"` o `"capacity"` son strings.
 
-### Verificación de host key requiere configuración explícita
-Si `insecure=false` (default) y no se provee `-known-hosts`, el binario termina con error en lugar de usar `~/.ssh/known_hosts` automáticamente.
+### Verificación de host key y fallback de `known_hosts`
+Por defecto, la verificación criptográfica de host keys está habilitada (`InsecureHostKey: false`). Si no se provee `-known-hosts` (`FS_KNOWN_HOSTS`), el cliente SSH (`internal/ssh/client.go`) intenta automáticamente utilizar `~/.ssh/known_hosts` del usuario actual. Si dicho archivo no existe o no tiene los permisos POSIX seguros requeridos (`perm & 0022 == 0`), el collector aborta con un error de seguridad para prevenir ataques Man-In-The-Middle (MITM).
 
 ### El wrapper Bash requiere `flock` y `mapfile`
 `flock` y `mapfile` (Bash 4+) deben estar disponibles en el sistema. Estos son estándar en RHEL/CentOS 7+ pero no están disponibles en todos los sistemas Unix.
@@ -586,7 +589,7 @@ El wrapper rota `/var/log/zabbix/flashsystem_collector.log` a `.log.1` cuando su
 **Verificar**:
 ```bash
 flashsystem-collector collect -host 10.10.10.50 -user monitor \
-    -keyfile /ruta/key -insecure 2>&1
+    -keyfile /etc/zabbix/ssh/flashsystem_key -known-hosts /etc/zabbix/ssh/known_hosts 2>&1
 # Leer el mensaje de error en stderr
 ```
 
@@ -594,16 +597,20 @@ flashsystem-collector collect -host 10.10.10.50 -user monitor \
 - `SSH host is required` → falta `-host` o `FS_HOST`
 - `SSH authentication required` → falta `-keyfile` y `-password`
 - `SSH key file not accessible` → el archivo de clave no existe o sin permisos de lectura
-- `SSH host key verification not configured` → falta `-insecure` o `-known-hosts`
+- `SSH key file ... has insecure permissions` → permisos más abiertos que `0600` (`chmod 600 /etc/zabbix/ssh/flashsystem_key`)
+- `known_hosts file ... has insecure permissions` → archivo modificable por grupo u otros (`chmod 644 /etc/zabbix/ssh/known_hosts`)
+- `SSH host key verification not configured` → falta `-known-hosts` o `-insecure` (y no existe `~/.ssh/known_hosts`)
 - `cache directory error` → `/var/tmp` no existe o no es escribible por el usuario
 
 ### El JSON de salida tiene `status.success: false` con todos los collectors en error
 
 **Causa**: SSH falla al conectar y tampoco hay cache previo.
 
-**Verificar conexión SSH manual**:
+**Verificar conexión SSH manual con host key verificada**:
 ```bash
-ssh -i /ruta/key -o StrictHostKeyChecking=no monitor@10.10.10.50 \
+ssh -i /etc/zabbix/ssh/flashsystem_key \
+    -o UserKnownHostsFile=/etc/zabbix/ssh/known_hosts \
+    monitor@10.10.10.50 \
     "svcinfo lssystem -delim :"
 ```
 
@@ -684,7 +691,7 @@ flashsystem-collector version
 ```bash
 sudo -u zabbix ssh \
     -i /etc/zabbix/ssh/flashsystem_key \
-    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/etc/zabbix/ssh/known_hosts \
     monitor@10.10.10.50 \
     "svcinfo lssystem -delim :" | head -5
 # Debe retornar líneas con formato "campo:valor"
@@ -696,7 +703,7 @@ sudo -u zabbix ssh \
 sudo -u zabbix \
     FS_USER=monitor \
     FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key \
-    FS_INSECURE=true \
+    FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts \
     /usr/local/bin/flashsystem-collector collect \
     -host 10.10.10.50 2>/dev/null | python3 -m json.tool > /dev/null
 # Sin output de error = JSON válido
@@ -708,7 +715,7 @@ echo "Exit code: $?"
 
 ```bash
 sudo -u zabbix \
-    FS_USER=monitor FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_INSECURE=true \
+    FS_USER=monitor FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts \
     /usr/local/bin/flashsystem-collector collect -host 10.10.10.50 2>/dev/null \
     | python3 -c "
 import json,sys
@@ -734,7 +741,7 @@ python3 -m json.tool /var/tmp/flashsystem_10.10.10.50.cache.json | head -30
 
 # Verificar que segunda ejecución usa cache (cache_hit: true)
 sudo -u zabbix \
-    FS_USER=monitor FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_INSECURE=true \
+    FS_USER=monitor FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts \
     /usr/local/bin/flashsystem-collector collect -host 10.10.10.50 2>/dev/null \
     | python3 -c "
 import json,sys
@@ -748,7 +755,7 @@ for r in d['status']['collector_runs']:
 
 ```bash
 sudo -u zabbix \
-    FS_USER=monitor FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_INSECURE=true \
+    FS_USER=monitor FS_KEYFILE=/etc/zabbix/ssh/flashsystem_key FS_KNOWN_HOSTS=/etc/zabbix/ssh/known_hosts \
     /usr/local/bin/flashsystem-collector discover \
     -host 10.10.10.50 \
     -category drives 2>/dev/null \
