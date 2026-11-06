@@ -33,3 +33,13 @@ Testing with an in-memory loopback SSH server proved that:
 3. Corrupted cache entries (where JSON is valid on disk but unmarshal into `[]parser.Record` fails) are safely isolated into `out.Status.CollectorRuns` errors without crashing `buildFromStaleCache`.
 
 **Action:** Future tests touching discovery categories or Zabbix template macro contracts must ensure full coverage across all 8 supported resource types using loopback SSH test fixtures and verify that missing fields default to empty strings rather than causing nil map crashes or malformed LLD JSON arrays.
+
+## 2026-05-22 - Zabbix Master Item Schema and Multi-Tier Reduction Resilience
+
+**Learning:** `internal/zabbix` serializes the master item telemetry payload consumed by Zabbix Dependent Items and LLD rules in `template/IBM FlashSystem Collector.yaml`. Three critical behavior contracts required verification:
+1. Master item section arrays (`system`, `nodes`, `enclosures`, `drives`, `pools`, `volumes`, `ports`, `flashcopy`, `replication`, `performance`, `batteries`, `psus`) must never marshal as `null` or `{}` even during partial failures or completely empty collection results; they must always emit valid JSON empty arrays `[]` (`json.RawMessage("[]")`) to prevent Zabbix JSONPath evaluation aborts.
+2. When storage size exceeds `MaxJSONBytes`, `reduceOutput` applies 4 progressive reduction tiers (halving volumes/drives, quartering volumes/drives, capping at 100 and clearing flashcopy, capping at 50 and clearing replication, and finally emptying volumes/drives completely). Previously only a single basic reduction scenario was tested; the progressive tiers and fallthrough empty sectioning were unverified.
+3. In `reTruncateSection`, malformed or non-array section JSON must gracefully recover by resetting the section to `[]` without error, and non-positive `maxRecords` must safely leave sections untouched.
+4. All 8 LLD discovery mapping dictionaries (`DriveLLDFields`, `PoolLLDFields`, `VolumeLLDFields`, `EnclosureLLDFields`, `NodeLLDFields`, `PortLLDFields`, `BatteryLLDFields`, `PSULLDFields`) must generate valid `{"data": [...]}` JSON structures in `LLDOutput`, correctly mapping missing fields to empty strings `""` rather than omitting keys or generating `null`.
+
+**Action:** Maintain table-driven LLD tests for all 8 resource categories, verify template Dependent Item root key contracts, and validate multi-tier progressive reduction down to total clearing in `internal/zabbix/output_test.go`.
