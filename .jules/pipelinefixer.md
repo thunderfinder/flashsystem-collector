@@ -47,3 +47,9 @@
 **Learning:** The static analysis and workflow verification pipeline `.github/workflows/lint.yml` (`deadcode`, `actionlint`, and `zizmor` jobs) omitted explicit `timeout-minutes`. In the event of external tool package installation delays (e.g. `go install deadcode`, `pip install zizmor`), action download delays, or runner stalls, jobs could execute up to the default 6-hour limit, tying up GitHub Actions concurrency limits.
 
 **Action:** Configure explicit `timeout-minutes: 10` on each job within `.github/workflows/lint.yml` to maintain consistent, deterministic runtime limits across all repository pipelines.
+
+## 2026-11-05 - Explicit Job Timeouts and Go Toolchain Alignment in CodeQL and Dependency Review
+
+**Learning:** The CodeQL analysis workflow (`.github/workflows/codeql.yml`) and Dependency Review workflow (`.github/workflows/dependency-review.yml`) lacked explicit `timeout-minutes`, falling back to GitHub Actions' default 6-hour (360-minute) maximum. In CodeQL, deep recursive AST extraction or external CodeQL pack downloads can stall runner instances. Additionally, CodeQL's `autobuild` build-mode for Go relies on whatever system Go compiler is present in the runner image rather than pinning to the project's required Go version (`go.mod` mandates Go 1.25.0), leading to potential toolchain divergence during Go AST compilation.
+
+**Action:** Configure explicit `timeout-minutes: 30` on the `analyze` job in `.github/workflows/codeql.yml` and `timeout-minutes: 10` on the `dependency-review` job in `.github/workflows/dependency-review.yml`. Furthermore, include an explicit Go setup step (`actions/setup-go` with `go-version: '1.25'`) conditioned on `matrix.language == 'go'` before CodeQL initialization.
