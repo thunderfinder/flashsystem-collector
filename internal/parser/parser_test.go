@@ -241,6 +241,77 @@ func TestParseEmptyAndErrors(t *testing.T) {
 	}
 }
 
+func TestSplitTabularLine(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "empty line",
+			input:    "",
+			expected: []string{},
+		},
+		{
+			name:     "single field",
+			input:    "id",
+			expected: []string{"id"},
+		},
+		{
+			name:     "standard multi field",
+			input:    "id:name:status:capacity",
+			expected: []string{"id", "name", "status", "capacity"},
+		},
+		{
+			name:     "spaces around fields",
+			input:    " id : name : status : capacity ",
+			expected: []string{"id", "name", "status", "capacity"},
+		},
+		{
+			name:     "empty fields omitted",
+			input:    "id::name:::status:",
+			expected: []string{"id", "name", "status"},
+		},
+		{
+			name:     "all empty colons",
+			input:    ":::::",
+			expected: []string{},
+		},
+		{
+			name:     "whitespace only fields omitted",
+			input:    "   :   :   ",
+			expected: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := splitTabularLine(tt.input)
+			if len(got) != len(tt.expected) {
+				t.Fatalf("splitTabularLine(%q) returned %d items, expected %d: got %#v, want %#v",
+					tt.input, len(got), len(tt.expected), got, tt.expected)
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("splitTabularLine(%q)[%d] = %q; want %q", tt.input, i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkSplitTabularLine(b *testing.B) {
+	line := "id:name:IO_group_id:IO_group_name:status:mdisk_grp_id:mdisk_grp_name:capacity:type:formatted:mdisk_id:mdisk_name:FC_id:FC_name:RC_id:RC_name:vdisk_UID:fc_map_count:copy_count:fast_write_state:se_copy_count:RC_change:compressed_copy_count"
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := splitTabularLine(line)
+		if len(res) != 23 {
+			b.Fatal("unexpected header count")
+		}
+	}
+}
+
 func BenchmarkFormatCapacity(b *testing.B) {
 	inputs := []string{
 		"960247313203",
