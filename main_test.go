@@ -45,6 +45,58 @@ func TestEscapeJSONString(t *testing.T) {
 	}
 }
 
+func TestEscapeJSONStringEdgeCases(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{`tab` + "\t" + `and\backslash`, `tab\tand\\backslash`},
+		{`carriage` + "\r" + `return`, `carriage\rreturn`},
+		{`"quoted" string`, `\"quoted\" string`},
+		{`unicode: ñ, 🚀, 中文`, `unicode: ñ, 🚀, 中文`},
+	}
+
+	for _, tt := range tests {
+		got := escapeJSONString(tt.input)
+		if got != tt.expected {
+			t.Errorf("escapeJSONString(%q) = %q, expected %q", tt.input, got, tt.expected)
+		}
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	printUsage()
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	usageText := buf.String()
+
+	expectedPhrases := []string{
+		"flashsystem-collector",
+		"Usage:",
+		"collect",
+		"discover",
+		"-category",
+		"-host",
+		"-user",
+		"-keyfile",
+		"drives|pools|volumes|enclosures|nodes|ports|batteries|psus",
+	}
+
+	for _, phrase := range expectedPhrases {
+		if !strings.Contains(usageText, phrase) {
+			t.Errorf("expected usage text to contain %q", phrase)
+		}
+	}
+}
+
 func TestRecordsToLLDItems(t *testing.T) {
 	records := []parser.Record{
 		{
@@ -579,5 +631,266 @@ func TestRunDiscoveryCollectorExecutionFailure(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), `collector "drives" failed`) {
 		t.Errorf("unexpected error format: %v", err)
+	}
+}
+
+func TestDialSSH(t *testing.T) {
+	// Setup a dedicated server for dialSSH to test config mapping
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate host key: %v", err)
+	}
+	signer, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		t.Fatalf("failed to create signer: %v", err)
+	}
+
+	serverConfig := &ssh.ServerConfig{
+		PasswordCallback: func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+			if conn.User() == "gooduser" && string(password) == "goodpass" {
+				return nil, nil
+			}
+			return nil, errors.New("auth failed")
+		},
+	}
+	serverConfig.AddHostKey(signer)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen on loopback: %v", err)
+	}
+	defer listener.Close()
+
+	go func() {
+		for {
+			tcpConn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go func(c net.Conn) {
+				_, chans, reqs, err := ssh.NewServerConn(c, serverConfig)
+				if err != nil {
+					return
+				}
+				go ssh.DiscardRequests(reqs)
+				for ch := range chans {
+					_ = ch.Reject(ssh.UnknownChannelType, "rejected")
+				}
+			}(tcpConn)
+		}
+	}()
+
+	host, portStr, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		t.Fatalf("failed to split host port: %v", err)
+	}
+	port, _ := strconv.Atoi(portStr)
+
+	t.Run("SuccessfulDial", func(t *testing.T) {
+		cfg := &config.Config{
+			SSH: config.SSHConfig{
+				Host:            host,
+				Port:            port,
+				User:            "gooduser",
+				Password:        "goodpass",
+				DialTimeout:     2 * time.Second,
+				CommandTimeout:  2 * time.Second,
+				InsecureHostKey: true,
+			},
+		}
+
+		c, err := dialSSH(cfg)
+		if err != nil {
+			t.Fatalf("expected dialSSH to succeed, got: %v", err)
+		}
+		defer c.Close()
+	})
+
+	t.Run("FailedDialAuth", func(t *testing.T) {
+		cfg := &config.Config{
+			SSH: config.SSHConfig{
+				Host:            host,
+				Port:            port,
+				User:            "gooduser",
+				Password:        "wrongpass",
+				DialTimeout:     2 * time.Second,
+				CommandTimeout:  2 * time.Second,
+				InsecureHostKey: true,
+			},
+		}
+
+		_, err := dialSSH(cfg)
+		if err == nil {
+			t.Fatal("expected dialSSH to fail with wrong password, got nil")
+		}
+	})
+
+	t.Run("FailedDialConnectionRefused", func(t *testing.T) {
+		// Pick an unused local port
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatalf("failed to listen: %v", err)
+		}
+		_, pStr, _ := net.SplitHostPort(l.Addr().String())
+		unusedPort, _ := strconv.Atoi(pStr)
+		_ = l.Close()
+
+		cfg := &config.Config{
+			SSH: config.SSHConfig{
+				Host:            "127.0.0.1",
+				Port:            unusedPort,
+				User:            "gooduser",
+				Password:        "goodpass",
+				DialTimeout:     200 * time.Millisecond,
+				CommandTimeout:  200 * time.Millisecond,
+				InsecureHostKey: true,
+			},
+		}
+
+		_, err = dialSSH(cfg)
+		if err == nil {
+			t.Fatal("expected dialSSH to fail on closed port, got nil")
+		}
+	})
+}
+
+func TestBuildFromStaleCacheAllCollectors(t *testing.T) {
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "all_collectors.cache.json")
+	c := cache.New(cachePath)
+
+	host := "192.168.1.200"
+	cfg := &config.Config{
+		SSH: config.SSHConfig{
+			Host: host,
+		},
+		Limits: config.LimitsConfig{
+			MaxJSONBytes: 1048576,
+			MaxVolumes:   500,
+			MaxDrives:    500,
+		},
+	}
+
+	allCollectorNames := []string{
+		"system", "nodes", "enclosures", "drives",
+		"pools", "volumes", "ports", "flashcopy",
+		"replication", "performance", "batteries", "psus",
+	}
+
+	for _, name := range allCollectorNames {
+		key := cache.MakeKey(host, name)
+		recs := []parser.Record{
+			{"id": "0", "name": name + "_item", "status": "online"},
+		}
+		// Set expired 1 minute ago, well within 24h maxStaleAge
+		if err := c.Set(key, recs, -1*time.Minute); err != nil {
+			t.Fatalf("failed setting cache for %s: %v", name, err)
+		}
+	}
+
+	startTime := time.Now()
+	sshErr := errors.New("storage management offline")
+
+	out := buildFromStaleCache(c, cfg, startTime, sshErr)
+	if out == nil {
+		t.Fatal("expected non-nil output")
+	}
+
+	sections := map[string]json.RawMessage{
+		"system":      out.System,
+		"nodes":       out.Nodes,
+		"enclosures":  out.Enclosures,
+		"drives":      out.Drives,
+		"pools":       out.Pools,
+		"volumes":     out.Volumes,
+		"ports":       out.Ports,
+		"flashcopy":   out.FlashCopy,
+		"replication": out.Replication,
+		"performance": out.Performance,
+		"batteries":   out.Batteries,
+		"psus":        out.PSUs,
+	}
+
+	for name, raw := range sections {
+		if string(raw) == "[]" {
+			t.Errorf("section %s was expected to be populated from stale cache, got []", name)
+		}
+		var parsed []parser.Record
+		if err := json.Unmarshal(raw, &parsed); err != nil {
+			t.Errorf("section %s failed to unmarshal: %v", name, err)
+		} else if len(parsed) != 1 || parsed[0]["name"] != name+"_item" {
+			t.Errorf("section %s record mismatch: %+v", name, parsed)
+		}
+	}
+
+	if len(out.Status.CollectorRuns) != 12 {
+		t.Errorf("expected 12 collector runs in status, got %d", len(out.Status.CollectorRuns))
+	}
+	for _, run := range out.Status.CollectorRuns {
+		if !run.CacheHit {
+			t.Errorf("expected CacheHit true for collector %s", run.Name)
+		}
+		if !strings.Contains(run.Error, "stale cache from") {
+			t.Errorf("expected stale cache note in error for collector %s, got: %s", run.Name, run.Error)
+		}
+	}
+}
+
+func TestBuildFromStaleCachePartialAndMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	cachePath := filepath.Join(tmpDir, "partial.cache.json")
+	c := cache.New(cachePath)
+
+	host := "192.168.1.201"
+	cfg := &config.Config{
+		SSH: config.SSHConfig{Host: host},
+		Limits: config.LimitsConfig{
+			MaxJSONBytes: 1048576,
+			MaxVolumes:   500,
+			MaxDrives:    500,
+		},
+	}
+
+	// Only populate system and pools in cache
+	_ = c.Set(cache.MakeKey(host, "system"), []parser.Record{{"id": "0", "status": "online"}}, -1*time.Minute)
+	_ = c.Set(cache.MakeKey(host, "pools"), []parser.Record{{"id": "1", "name": "p1"}}, -1*time.Minute)
+
+	startTime := time.Now()
+	sshErr := errors.New("network unreachable")
+
+	out := buildFromStaleCache(c, cfg, startTime, sshErr)
+	if out == nil {
+		t.Fatal("expected non-nil output")
+	}
+
+	// System and pools should have records
+	if string(out.System) == "[]" {
+		t.Error("expected system to be populated from stale cache")
+	}
+	if string(out.Pools) == "[]" {
+		t.Error("expected pools to be populated from stale cache")
+	}
+
+	// Others like volumes, drives, batteries must safely default to "[]"
+	if string(out.Volumes) != "[]" {
+		t.Errorf("expected empty [] for unpopulated volumes, got: %s", string(out.Volumes))
+	}
+	if string(out.Drives) != "[]" {
+		t.Errorf("expected empty [] for unpopulated drives, got: %s", string(out.Drives))
+	}
+	if string(out.Batteries) != "[]" {
+		t.Errorf("expected empty [] for unpopulated batteries, got: %s", string(out.Batteries))
+	}
+
+	// Verify error descriptions for unpopulated items
+	var foundMissingVolumeErr bool
+	for _, run := range out.Status.CollectorRuns {
+		if run.Name == "volumes" && strings.Contains(run.Error, "no cache available") {
+			foundMissingVolumeErr = true
+			break
+		}
+	}
+	if !foundMissingVolumeErr {
+		t.Errorf("expected 'no cache available' error for volumes, got runs: %+v", out.Status.CollectorRuns)
 	}
 }
