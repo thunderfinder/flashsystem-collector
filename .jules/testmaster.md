@@ -43,3 +43,12 @@ Testing with an in-memory loopback SSH server proved that:
 4. All 8 LLD discovery mapping dictionaries (`DriveLLDFields`, `PoolLLDFields`, `VolumeLLDFields`, `EnclosureLLDFields`, `NodeLLDFields`, `PortLLDFields`, `BatteryLLDFields`, `PSULLDFields`) must generate valid `{"data": [...]}` JSON structures in `LLDOutput`, correctly mapping missing fields to empty strings `""` rather than omitting keys or generating `null`.
 
 **Action:** Maintain table-driven LLD tests for all 8 resource categories, verify template Dependent Item root key contracts, and validate multi-tier progressive reduction down to total clearing in `internal/zabbix/output_test.go`.
+
+## 2026-05-23 - Top-Level Orchestration, SSH Dialing, and Full Stale Fallback Verification
+
+**Learning:** `main.go` coordinates binary entry points, `dialSSH` configuration propagation, and emergency stale cache output generation when storage SSH is unreachable. While individual internal packages had high unit test coverage, three core integration pathways in the application entry point were previously uncovered:
+1. `dialSSH`: Mapping loaded `*config.Config` settings into `internalssh.Client` creation must correctly propagate timeouts, authentication parameters, and host key policies, and cleanly propagate TCP dial or handshake failures without panicking or masking errors.
+2. Full 12-Collector Stale Fallback: `buildFromStaleCache` must reconstruct all 12 storage resource sections (`system`, `nodes`, `enclosures`, `drives`, `pools`, `volumes`, `ports`, `flashcopy`, `replication`, `performance`, `batteries`, `psus`) from disk cache. In mixed scenarios where some collectors have stale entries and others do not, unpopulated sections must safely default to valid JSON empty arrays `[]` while logging specific `"SSH failed and no cache available"` errors in `status.collector_runs`.
+3. Error payload string escaping: `escapeJSONString` must safely handle raw control characters (quotes, backslashes, tabs, carriage returns) without corrupting fallback JSON strings emitted to stdout.
+
+**Action:** Maintain end-to-end integration tests in `main_test.go` covering `dialSSH` against loopback SSH fixtures, full/partial stale cache fallback across all 12 storage collectors, and string escaping edge cases.
