@@ -53,3 +53,9 @@
 **Learning:** The CodeQL analysis workflow (`.github/workflows/codeql.yml`) and Dependency Review workflow (`.github/workflows/dependency-review.yml`) lacked explicit `timeout-minutes`, falling back to GitHub Actions' default 6-hour (360-minute) maximum. In CodeQL, deep recursive AST extraction or external CodeQL pack downloads can stall runner instances. Additionally, CodeQL's `autobuild` build-mode for Go relies on whatever system Go compiler is present in the runner image rather than pinning to the project's required Go version (`go.mod` mandates Go 1.25.0), leading to potential toolchain divergence during Go AST compilation.
 
 **Action:** Configure explicit `timeout-minutes: 30` on the `analyze` job in `.github/workflows/codeql.yml` and `timeout-minutes: 10` on the `dependency-review` job in `.github/workflows/dependency-review.yml`. Furthermore, include an explicit Go setup step (`actions/setup-go` with `go-version: '1.25'`) conditioned on `matrix.language == 'go'` before CodeQL initialization.
+
+## 2026-11-06 - Workflow Concurrency and Redundant Run Cancellation
+
+**Learning:** Primary CI pipelines (`.github/workflows/go.yml` and `.github/workflows/lint.yml`) lacked `concurrency` configurations. When multiple commits were pushed in rapid succession to pull requests or branches, GitHub Actions executed parallel runs for obsolete commits, wasting runner resources and creating queue contention. Furthermore, canceling runs unconditionally on the main branch could interrupt deployment or verification of consecutive merges.
+
+**Action:** Configure workflow-level concurrency groups (`group: ${{ github.workflow }}-${{ github.ref }}`) with dynamic pull-request cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`) in core CI workflows. This cancels superseded runs on pull requests while ensuring that runs on the `main` branch run to completion without premature cancellation.
