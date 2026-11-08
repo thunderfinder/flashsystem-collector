@@ -12,9 +12,14 @@ The project adheres to **Semantic Versioning (SemVer 2.0.0)** (`MAJOR.MINOR.PATC
 - **MINOR**: Backward-compatible feature additions (e.g., adding a new collector domain or introducing new LLD macros).
 - **PATCH**: Backward-compatible bug fixes, security hardening, or parser corrections.
 
-The binary version is defined directly in `main.go`:
+The binary version is defined as a package variable in `main.go` to support build-time overrides:
 ```go
-const version = "2.0.0"
+var version = "2.0.0"
+```
+
+Custom release versions can be injected during compilation using `-ldflags`:
+```bash
+go build -ldflags="-s -w -X main.version=2.1.0" -o flashsystem-collector .
 ```
 
 ---

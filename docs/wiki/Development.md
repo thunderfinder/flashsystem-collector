@@ -81,7 +81,8 @@ func (c *HostsCollector) Collect(client *internalssh.Client) ([]parser.Record, e
 	if err != nil {
 		return nil, err
 	}
-	return parser.Parse(output)
+	result := parser.Parse(output)
+	return result.Records, nil
 }
 ```
 
