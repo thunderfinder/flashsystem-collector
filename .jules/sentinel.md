@@ -31,3 +31,11 @@
 **Learning:** Relying solely on outer configuration parsing layers for filesystem security checks violates defense-in-depth principles. The SSH client transport package is the final boundary responsible for reading credential files from disk.
 
 **Prevention:** Enforce `validateKeyFile` directly inside `internal/ssh.buildAuthMethod` to require regular files (`info.Mode().IsRegular()`) and strict POSIX permissions (`info.Mode().Perm() & 0077 == 0`, chmod 600 or stricter) prior to reading private keys.
+
+## 2025-05-22 - Cache File Ownership Verification in Shared Sticky Directories
+
+**Vulnerability:** In `internal/cache/cache.go`, `loadFromDisk()` validated POSIX file permissions (`0600`) and regular file status, but failed to check UID ownership. On multi-user systems where the default cache directory `/var/tmp` is world-writable with sticky bit (`1777`), an unprivileged attacker could pre-create or plant a cache file (`flashsystem_<host>.cache.json`) with mode `0600` owned by themselves. The collector would load and trust this foreign file into memory, serving attacker-poisoned telemetry or false discovery payloads to Zabbix during cache hits or SSH outages.
+
+**Learning:** Mode `0600` on a file merely prevents other users from reading or writing to it; it does not prevent an attacker from being the owner of a file in a world-writable directory. In sticky directories, regular users cannot rename or unlink files owned by other users, which both locks in the planted cache file and allows spoofed monitoring data to be loaded if UID ownership is not checked before reading.
+
+**Prevention:** Always verify file ownership on POSIX platforms via `info.Sys().(*syscall.Stat_t)` to ensure cache files are owned by the current process UID (`os.Getuid()`) or root (UID `0`) before trusting or loading them from disk.
