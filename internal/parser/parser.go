@@ -344,8 +344,23 @@ func splitTabularLine(line string) []string {
 }
 
 // splitLines divide el output en líneas individuales.
+// Pre-asigna capacidad en el slice usando strings.Count y escanea '\n' in-place
+// para evitar intermediaciones innecesarias del runtime en strings.Split.
 func splitLines(output string) []string {
-	return strings.Split(output, "\n")
+	n := strings.Count(output, "\n")
+	result := make([]string, 0, n+1)
+
+	rest := output
+	for {
+		idx := strings.IndexByte(rest, '\n')
+		if idx < 0 {
+			result = append(result, rest)
+			break
+		}
+		result = append(result, rest[:idx])
+		rest = rest[idx+1:]
+	}
+	return result
 }
 
 // filterEmpty retorna solo las líneas no vacías.

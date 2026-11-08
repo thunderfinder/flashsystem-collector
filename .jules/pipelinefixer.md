@@ -59,3 +59,9 @@
 **Learning:** Primary CI pipelines (`.github/workflows/go.yml` and `.github/workflows/lint.yml`) lacked `concurrency` configurations. When multiple commits were pushed in rapid succession to pull requests or branches, GitHub Actions executed parallel runs for obsolete commits, wasting runner resources and creating queue contention. Furthermore, canceling runs unconditionally on the main branch could interrupt deployment or verification of consecutive merges.
 
 **Action:** Configure workflow-level concurrency groups (`group: ${{ github.workflow }}-${{ github.ref }}`) with dynamic pull-request cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`) in core CI workflows. This cancels superseded runs on pull requests while ensuring that runs on the `main` branch run to completion without premature cancellation.
+
+## 2026-11-07 - Scoping Pull Request Permissions and Concurrency in Analysis Workflows
+
+**Learning:** In `.github/workflows/dependency-review.yml`, `pull-requests: write` was declared at the top-level workflow scope instead of being restricted to the specific job requiring comment write access, violating least privilege principles. Furthermore, heavyweight security scanning pipelines (`codeql.yml` and `dependency-review.yml`) lacked workflow-level concurrency controls. On active pull requests with rapid push sequences, duplicate matrix runs of CodeQL and Dependency Review consumed significant GitHub Actions minutes and runner slots for superseded commits.
+
+**Action:** Confine `pull-requests: write` permissions strictly to the job level in `.github/workflows/dependency-review.yml` while maintaining `contents: read` at the top level. Apply standard workflow-level concurrency groups (`group: ${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`) to prevent redundant runs of CodeQL and Dependency Review on pull requests.

@@ -167,31 +167,13 @@ Zabbix External Checks have upper bounds on payload sizes (historically 1MB to 1
 - Whenever truncation occurs, the original record count is preserved in `status.truncated_at` (e.g., `{"volumes": 1420}`).
 
 ### Structured JSON Schema
+The Master Item JSON payload emitted to `stdout` follows the contract defined in `internal/zabbix.Output`:
+
 ```json
 {
   "timestamp": "2026-03-17T12:00:00Z",
   "host": "10.10.10.50",
   "version": "2.0.0",
-  "status": {
-    "success": true,
-    "duration_ms": 1420,
-    "collector_runs": [
-      {
-        "name": "system",
-        "record_count": 1,
-        "cache_hit": false,
-        "duration_ms": 120
-      }
-    ],
-    "cache": {
-      "total_entries": 12,
-      "valid_entries": 12,
-      "expired_entries": 0,
-      "cache_hits": 8,
-      "cache_misses": 4,
-      "file_path": "/var/tmp/flashsystem_10.10.10.50.cache.json"
-    }
-  },
   "system": [...],
   "nodes": [...],
   "enclosures": [...],
@@ -203,6 +185,38 @@ Zabbix External Checks have upper bounds on payload sizes (historically 1MB to 1
   "replication": [...],
   "performance": [...],
   "batteries": [...],
-  "psus": [...]
+  "psus": [...],
+  "units_info": {
+    "vdisk_ms": "microseconds",
+    "mdisk_ms": "microseconds",
+    "drive_ms": "microseconds",
+    "read_ms": "milliseconds",
+    "write_ms": "milliseconds",
+    "cpu_pc": "percent",
+    "write_cache_pc": "percent",
+    "temp_c": "celsius",
+    "power_w": "watts"
+  },
+  "status": {
+    "success": true,
+    "duration_ms": 1420,
+    "collector_runs": [
+      {
+        "name": "system",
+        "record_count": 1,
+        "cache_hit": false,
+        "duration_ms": 120
+      }
+    ],
+    "errors": [],
+    "truncated_at": null
+  },
+  "cache_stats": {
+    "active_entries": 12,
+    "expired_entries": 0,
+    "total_entries": 12,
+    "file_path": "/var/tmp/flashsystem_10.10.10.50.cache.json",
+    "updated_at": "2026-03-17T12:00:00Z"
+  }
 }
 ```

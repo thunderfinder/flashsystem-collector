@@ -241,6 +241,60 @@ func TestParseEmptyAndErrors(t *testing.T) {
 	}
 }
 
+func TestSplitLines(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			expected: []string{""},
+		},
+		{
+			name:     "single line without newline",
+			input:    "single line",
+			expected: []string{"single line"},
+		},
+		{
+			name:     "single line with trailing newline",
+			input:    "single line\n",
+			expected: []string{"single line", ""},
+		},
+		{
+			name:     "multiple lines",
+			input:    "line1\nline2\nline3",
+			expected: []string{"line1", "line2", "line3"},
+		},
+		{
+			name:     "multiple lines trailing newline",
+			input:    "line1\nline2\nline3\n",
+			expected: []string{"line1", "line2", "line3", ""},
+		},
+		{
+			name:     "consecutive newlines",
+			input:    "line1\n\nline3",
+			expected: []string{"line1", "", "line3"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := splitLines(tt.input)
+			if len(got) != len(tt.expected) {
+				t.Fatalf("splitLines(%q) returned %d lines, expected %d: got %#v, want %#v",
+					tt.input, len(got), len(tt.expected), got, tt.expected)
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("splitLines(%q)[%d] = %q; want %q", tt.input, i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
 func TestSplitTabularLine(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -297,6 +351,18 @@ func TestSplitTabularLine(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func BenchmarkSplitLines(b *testing.B) {
+	data := generateTabularData(500)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := splitLines(data)
+		if len(res) != 502 {
+			b.Fatalf("unexpected line count: %d", len(res))
+		}
 	}
 }
 

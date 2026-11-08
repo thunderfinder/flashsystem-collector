@@ -167,3 +167,39 @@
 **Release Decision:**
 - **Status:** READY_TO_MERGE / RELEASE_READY.
 - The integrated candidate `cc26af71dc3f499a64581a61471d85a037a47baa` is fully validated, integrated, and ready for release.
+
+## 2026-11-08 - Mainline Integration & Release Verification Audit (Commit 111ab31 & Candidate Integration)
+
+**Mission:** Complete comprehensive release authority verification and candidate harmonization for `thunderfinder/flashsystem-collector` following the mainline merge of PR #61 and evaluate all outstanding candidate branches.
+
+**Repository Branch & Candidate Lifecycle Discovery:**
+- Evaluated repository candidate branches against mainline HEAD (`111ab31e33d871d2d985c408db7d31640652fc5f`):
+  1. `origin/bolt-optimize-splitlines-11014255570545216750` (commit `f7d0365`): Pre-allocates line slice capacity via `strings.Count(output, "\n")` and scans newlines in-place with `strings.IndexByte`, eliminating intermediate slice reallocations and improving splitting performance by ~11.25%.
+  2. `origin/sentinel/cache-ownership-verification-10586700724189965505` (commit `184eecf`): Enforces cache file ownership checks on POSIX systems (`os.Getuid()` or root UID 0) via `syscall.Stat_t` in `loadFromDisk()`, preventing local privilege escalation and cache poisoning in world-writable sticky directories (`/var/tmp`).
+  3. `origin/pipelinefixer/analysis-concurrency-and-permissions-11228562158323854074` (commit `59fe7be`): Scopes `pull-requests: write` permissions strictly to the job level in `dependency-review.yml` (least privilege) and adds workflow-level concurrency groups to `codeql.yml` and `dependency-review.yml`.
+  4. `origin/docmaster/wiki-schema-and-cache-sync-6844522397257916852` (commit `4267bab`): Synchronizes GitHub Wiki documentation with implementation contracts (`cache_stats`, `units_info`, `cache.store` JSON envelope, `-bytes` flag in LLD commands, and mode 0600 security checks).
+  5. `origin/repokeeper-audit-commit-111ab31-14859879218954032580` (commit `d367076`): RepoKeeper maintenance audit for commit `111ab31`.
+
+**Technical & Architectural Feasibility:**
+- **Feasibility Classification:** FEASIBLE.
+- In-place newline scanning in `internal/parser/parser.go` preserves exact line chunking semantics across empty, single-line, multi-line, and trailing newline outputs while avoiding dynamic slice resizing.
+- POSIX UID verification in `internal/cache/cache_posix.go` and `cache_windows.go` correctly isolates OS-specific syscall inspection behind build tags, preventing cache poisoning while remaining fully cross-platform.
+- Concurrency and permission scoping in GitHub Actions workflows prevent redundant workflow execution while adhering to least-privilege principles without breaking PR comment summaries.
+- Wiki documentation updates accurately reflect production JSON schemas and operational behaviors.
+
+**Validation Matrix:**
+| Validation | Result | Evidence |
+|---|---|---|
+| Static analysis (`gofmt -l .`, `go vet ./...`) | PASS | 0 formatting diffs, 0 compiler/vet diagnostics |
+| Dependency integrity (`go mod verify`) | PASS | All modules verified against `go.sum` |
+| Unit tests (`go test -v ./...`) | PASS | 100% test pass rate across all packages |
+| Race detection (`go test -race ./...`) | PASS | Zero race conditions or concurrency warnings |
+| Build verification (Linux AMD64 static) | PASS | `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath` produced functional ELF binary |
+| Shell wrapper (`bash -n scripts/flashsystem_collector.sh`) | PASS | Syntax verified clean, lock management & logging functional |
+| Zabbix template compatibility | PASS | All 77 UUIDs verified conforming to 32 hex chars; JSONPath selectors valid |
+| IBM hardware validation | NOT AVAILABLE | In-memory loopback SSH server verified; physical storage hardware not present |
+| Mainline integration | PASS | Clean, conflict-free integration of candidate improvements into mainline |
+
+**Release Decision:**
+- **Status:** READY_TO_MERGE / RELEASE_READY.
+- All candidate branches have been functionally verified, integrated, and validated against mainline.

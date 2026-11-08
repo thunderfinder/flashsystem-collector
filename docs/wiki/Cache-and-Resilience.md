@@ -43,7 +43,14 @@ return os.Rename(tmpName, c.filePath)
 
 1. Data is serialized and written to a secure temporary file (`.flashsystem_cache_*.tmp`) created in the same directory via `os.CreateTemp` (which sets mode `0600`).
 2. `tmp.Sync()` flushes buffered bytes to persistent storage.
-3. The temporary file is committed via POSIX `os.Rename`. Because the temporary file resides on the same filesystem directory, `rename(2)` executes an atomic inode pointer swap, guaranteeing that the primary cache file is never partially written or corrupted even if the process is terminated abruptly.
+3. Restrictive POSIX file mode (`0600`) is explicitly enforced on the temporary file before renaming.
+4. The temporary file is committed via POSIX `os.Rename`. Because the temporary file resides on the same filesystem directory, `rename(2)` executes an atomic inode pointer swap, guaranteeing that the primary cache file is never partially written or corrupted even if the process is terminated abruptly.
+
+### Cache File Security & Poisoning Protection
+Because the default cache location is `/var/tmp` (a shared, world-writable directory with sticky bit), `internal/cache/cache.go` enforces strict security validations on disk read (`loadFromDisk`):
+- **Regular File Enforcement**: The cache path is inspected via `os.Lstat()`. If the path is a symlink, FIFO pipe, or device file (`!info.Mode().IsRegular()`), loading is aborted and the file is discarded to prevent symlink attacks.
+- **POSIX Permission Boundary**: On non-Windows platforms, permissions must satisfy `perm & 0077 == 0` (owner-only access, mode `0600` or stricter). Any file readable or writable by group or other users is rejected.
+- **Path Sanitization**: `Config.CacheFile()` sanitizes hostnames using `strings.NewReplacer` to replace path traversal tokens (`..`) alongside `:`, `/`, `\`, and spaces with underscores (`_`), preventing directory breakout.
 
 ---
 

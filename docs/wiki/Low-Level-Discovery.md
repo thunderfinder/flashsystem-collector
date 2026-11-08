@@ -42,14 +42,14 @@ flowchart LR
 The collector maps native IBM `svcinfo` attributes directly to Zabbix macros (`{#MACRO}`) using defined field maps in `internal/zabbix/output.go`:
 
 ### 1. Storage Pools (`pools`)
-- **Native Command**: `svcinfo lsmdiskgrp -delim :`
+- **Native Command**: `svcinfo lsmdiskgrp -bytes -delim :`
 - **Field Map**:
   - `id` $\rightarrow$ `{#POOLID}`
   - `name` $\rightarrow$ `{#POOLNAME}`
   - `status` $\rightarrow$ `{#POOLSTATUS}`
 
 ### 2. Virtual Volumes (`volumes`)
-- **Native Command**: `svcinfo lsvdisk -delim :`
+- **Native Command**: `svcinfo lsvdisk -bytes -delim :`
 - **Field Map**:
   - `id` $\rightarrow$ `{#VOLUMEID}`
   - `name` $\rightarrow$ `{#VOLUMENAME}`

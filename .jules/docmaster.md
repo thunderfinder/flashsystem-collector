@@ -57,3 +57,15 @@
 4. Section 3 ("Requisitos identificados") and Section 5 omitted explicit documentation of the strict POSIX permission constraints on private keys (`0600`, `perm & 0077 == 0`) and `known_hosts` (`0644`/`0600`, `perm & 0022 == 0`).
 
 **Action:** Updated `instructions.md` to reflect Go 1.25.0+, accurately document the `~/.ssh/known_hosts` fallback resolution path, detail strict file permission checks for credentials and host keys, and replace insecure defaults with hardened `FS_KNOWN_HOSTS` examples throughout execution, troubleshooting, and verification sections.
+
+## 2026-11-08 - Master JSON Schema, On-Disk Cache Structure, and Collector Contract Synchronization
+
+**Learning:** Documentation across several wiki pages deviated from the underlying Go implementation:
+1. `docs/wiki/How-It-Works.md` illustrated an inaccurate Master Item JSON schema nesting an invented `"cache"` object (with non-existent fields `valid_entries`, `cache_hits`, `cache_misses`) inside `"status"`, while omitting top-level `"cache_stats"` and `"units_info"`. In reality, `internal/zabbix.Output` defines top-level `"cache_stats"` (`cache.Stats` with `active_entries`, `expired_entries`, `total_entries`, `file_path`, `updated_at`) and top-level `"units_info"`.
+2. `docs/wiki/Operations-and-Maintenance.md` provided a Python diagnostic snippet for inspecting `/var/tmp/flashsystem_*.cache.json` that assumed a flat map of entries containing `ttl_seconds`. In reality, `internal/cache.store` contains `{"entries": {...}, "updated_at": "...", "version": "1"}` where entries are keyed by `<host>:<collector>` and store `value`, `cached_at`, `expires_at`, and `key` without any `ttl_seconds` property.
+3. `docs/wiki/Development.md` included sample collector code returning `parser.Parse(output)` directly into `([]parser.Record, error)`, which fails compilation because `parser.Parse()` returns `parser.Result` rather than multiple values.
+4. `docs/wiki/Release-and-Upgrade.md` documented `const version = "2.0.0"`, obscuring the fact that `version` is declared as a package `var` in `main.go` to support build-time overrides via `go build -ldflags="-X main.version=..."`.
+5. `docs/wiki/Low-Level-Discovery.md` omitted the `-bytes` argument on native CLI commands for storage pools (`svcinfo lsmdiskgrp -bytes -delim :`) and virtual volumes (`svcinfo lsvdisk -bytes -delim :`).
+6. `docs/wiki/Cache-and-Resilience.md` omitted documentation of the security checks enforced in `internal/cache/cache.go` (`loadFromDisk`) ensuring cache files are regular files and have POSIX mode `0600` (`perm & 0077 == 0`) to prevent cache poisoning attacks in `/var/tmp`.
+
+**Action:** Synchronized all wiki pages (`How-It-Works.md`, `Operations-and-Maintenance.md`, `Development.md`, `Release-and-Upgrade.md`, `Low-Level-Discovery.md`, and `Cache-and-Resilience.md`) with the exact Go structs, contracts, and security boundaries. Future documentation changes must strictly cross-verify JSON payloads against `zabbix.Output` and cache operations against `cache.store`.

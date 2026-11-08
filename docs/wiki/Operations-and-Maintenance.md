@@ -85,15 +85,29 @@ ls -lh /var/tmp/flashsystem_*.cache.json
 ```
 
 ### Inspecting Cache Stats Directly
+The on-disk cache store (`internal/cache.store`) persists a versioned envelope containing `entries`, `updated_at`, and `version`. Inspect the cached entries and their timestamps directly:
+
 ```bash
 python3 -c "
 import json
 with open('/var/tmp/flashsystem_10.10.10.50.cache.json') as f:
     cache = json.load(f)
-print('Total Cached Keys:', len(cache))
-for key, item in cache.items():
-    print(f'  {key:30} CachedAt: {item.get(\"cached_at\")} TTL: {item.get(\"ttl_seconds\")}s')
+entries = cache.get('entries', {})
+print(f'Total Cached Keys: {len(entries)} (Version: {cache.get(\"version\")}, Updated: {cache.get(\"updated_at\")})')
+for key, item in sorted(entries.items()):
+    print(f'  {key:35} CachedAt: {item.get(\"cached_at\")}  ExpiresAt: {item.get(\"expires_at\")}')
 "
+```
+
+Additionally, `flashsystem-collector` outputs runtime cache statistics in the top-level `cache_stats` object of every collection payload:
+```json
+"cache_stats": {
+  "active_entries": 12,
+  "expired_entries": 0,
+  "total_entries": 12,
+  "file_path": "/var/tmp/flashsystem_10.10.10.50.cache.json",
+  "updated_at": "2026-03-17T12:00:00Z"
+}
 ```
 
 ### Flushing the Cache
