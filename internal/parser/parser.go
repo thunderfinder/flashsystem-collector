@@ -66,11 +66,8 @@ func Parse(output string) Result {
 		return result
 	}
 
-	lines := splitLines(output)
-	result.RawLines = len(lines)
-
-	// Filtrar líneas vacías.
-	lines = filterEmpty(lines)
+	lines, rawLines := extractLines(output)
+	result.RawLines = rawLines
 
 	if len(lines) == 0 {
 		result.Format = FormatEmpty
@@ -119,8 +116,8 @@ func ParseVerticalForced(output string) Result {
 		return result
 	}
 
-	lines := filterEmpty(splitLines(output))
-	result.RawLines = len(lines)
+	lines, rawLines := extractLines(output)
+	result.RawLines = rawLines
 
 	if len(lines) == 0 || (len(lines) == 1 && isNoResults(lines[0])) {
 		result.Format = FormatEmpty
@@ -343,14 +340,42 @@ func splitTabularLine(line string) []string {
 	return result
 }
 
-// splitLines divide el output en líneas individuales.
+// extractLines escanea in-place las líneas de output divididas por '\n',
+// filtrando líneas en blanco y pre-alocando la capacidad del slice destino
+// según strings.Count(output, "\n") + 1. Retorna las líneas no vacías y
+// la cantidad total de líneas (raw lines).
+func extractLines(output string) ([]string, int) {
+	numNewlines := strings.Count(output, "\n")
+	result := make([]string, 0, numNewlines+1)
+	rawCount := 0
+
+	rest := output
+	for {
+		rawCount++
+		idx := strings.IndexByte(rest, '\n')
+		if idx < 0 {
+			if strings.TrimSpace(rest) != "" {
+				result = append(result, rest)
+			}
+			break
+		}
+		line := rest[:idx]
+		if strings.TrimSpace(line) != "" {
+			result = append(result, line)
+		}
+		rest = rest[idx+1:]
+	}
+
+	return result, rawCount
+}
+
+// splitLines divide el output en líneas individuales (mantenido para compatibilidad).
 func splitLines(output string) []string {
 	return strings.Split(output, "\n")
 }
 
-// filterEmpty retorna solo las líneas no vacías.
+// filterEmpty retorna solo las líneas no vacías (mantenido para compatibilidad).
 func filterEmpty(lines []string) []string {
-	// Reutilizar el slice original in-place para evitar alocaciones adicionales.
 	result := lines[:0]
 	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
