@@ -10,6 +10,7 @@ These metrics monitor the operational state of the collector and its interaction
 
 | Metric Name / Description | Zabbix Item Key | Type | Unit | JSONPath Source | Polling Interval |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **ICMP Ping Network Availability** | `icmpping` | Simple Check | Boolean (`1`/`0`) | Direct ICMP reachability probe | 1m |
 | **Collector Master Payload** | `flashsystem_collector.sh[{HOST.IP},collect]` | External Check | Text | *(Raw JSON stdout)* | `{$FS_COLLECT_INTERVAL}` (1m) |
 | **Collector Success State** | `flashsystem.collector.success[{HOST.IP}]` | Dependent | Boolean (`1`/`0`) | `$.status.success` | Inherited |
 | **Collector Execution Duration** | `flashsystem.collector.duration[{HOST.IP}]` | Dependent | Milliseconds (`ms`) | `$.status.duration_ms` | Inherited |
