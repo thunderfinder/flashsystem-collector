@@ -59,3 +59,9 @@
 **Learning:** Primary CI pipelines (`.github/workflows/go.yml` and `.github/workflows/lint.yml`) lacked `concurrency` configurations. When multiple commits were pushed in rapid succession to pull requests or branches, GitHub Actions executed parallel runs for obsolete commits, wasting runner resources and creating queue contention. Furthermore, canceling runs unconditionally on the main branch could interrupt deployment or verification of consecutive merges.
 
 **Action:** Configure workflow-level concurrency groups (`group: ${{ github.workflow }}-${{ github.ref }}`) with dynamic pull-request cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`) in core CI workflows. This cancels superseded runs on pull requests while ensuring that runs on the `main` branch run to completion without premature cancellation.
+
+## 2026-11-07 - Scoped Least-Privilege Permissions and Concurrency in Dependency Review Workflow
+
+**Learning:** `.github/workflows/dependency-review.yml` declared `pull-requests: write` at the top-level workflow permissions block, violating least-privilege standards and triggering `zizmor` high-severity `excessive-permissions` findings. Scoping `pull-requests: write` at the workflow level unnecessarily grants PR write capabilities to all current or future jobs. Additionally, the workflow lacked concurrency management, allowing obsolete dependency review checks to continue running when subsequent commits are pushed to the same pull request.
+
+**Action:** Default the top-level permissions in `.github/workflows/dependency-review.yml` to `contents: read`, scope `pull-requests: write` strictly to the `dependency-review` job level with documented explanatory comments, add a descriptive job name, and enforce workflow concurrency controls (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`).
