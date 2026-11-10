@@ -369,22 +369,6 @@ func extractLines(output string) ([]string, int) {
 	return result, rawCount
 }
 
-// splitLines divide el output en líneas individuales (mantenido para compatibilidad).
-func splitLines(output string) []string {
-	return strings.Split(output, "\n")
-}
-
-// filterEmpty retorna solo las líneas no vacías (mantenido para compatibilidad).
-func filterEmpty(lines []string) []string {
-	result := lines[:0]
-	for _, line := range lines {
-		if strings.TrimSpace(line) != "" {
-			result = append(result, line)
-		}
-	}
-	return result
-}
-
 // isNoResults detecta las variantes de "sin resultados" que retorna svcinfo.
 // Spectrum Virtualize retorna distintas variantes según la versión.
 // Utiliza strings.EqualFold y verificación de prefijo para evitar alocaciones de heap
