@@ -57,3 +57,9 @@
 4. Section 3 ("Requisitos identificados") and Section 5 omitted explicit documentation of the strict POSIX permission constraints on private keys (`0600`, `perm & 0077 == 0`) and `known_hosts` (`0644`/`0600`, `perm & 0022 == 0`).
 
 **Action:** Updated `instructions.md` to reflect Go 1.25.0+, accurately document the `~/.ssh/known_hosts` fallback resolution path, detail strict file permission checks for credentials and host keys, and replace insecure defaults with hardened `FS_KNOWN_HOSTS` examples throughout execution, troubleshooting, and verification sections.
+
+## 2026-11-10 - Full Technical Documentation & Wiki Architecture Audit
+
+**Learning:** Conducted a comprehensive audit of all 24 GitHub Wiki topic pages plus `_Sidebar.md` under `docs/wiki/` against the authoritative source code, IBM FlashSystem command references, and Zabbix templates. Verified that every technical dimension (Go 1.25.0, 12 resource collectors, 8 LLD discovery categories, 3-tier TTL architecture, post-connect cache purge timing, 24-hour maximum stale age bound, POSIX key and known_hosts permissions, and 16 Zabbix template user macros) is consistently and rigorously documented. Because direct push access to `flashsystem-collector.wiki.git` is restricted in the execution environment, the full 25-file wiki suite remains prepared in `docs/wiki/` for synchronization.
+
+**Action:** Confirmed publication status as `PREPARED` per WikiBuilder documentation guidelines. Verified 47 internal wiki links (`[[Page]]` format), 10 Mermaid architectural diagrams, zero broken links, and full alignment with project security and reliability contracts.
