@@ -378,9 +378,13 @@ func validateCacheDir(dir string) error {
 	return nil
 }
 
+// safeHostReplacer sanitiza caracteres inválidos en nombres de archivo y previene path traversal.
+// Precompilado a nivel de paquete para evitar inicializaciones repetidas del replacer en cada llamada.
+var safeHostReplacer = strings.NewReplacer("..", "_", ":", "_", "/", "_", "\\", "_", " ", "_")
+
 // CacheFile retorna la ruta completa del archivo de cache para un host dado.
 // El nombre sanitiza caracteres no válidos en nombres de archivo y previene path traversal.
 func (cfg *Config) CacheFile(host string) string {
-	safe := strings.NewReplacer("..", "_", ":", "_", "/", "_", "\\", "_", " ", "_").Replace(host)
+	safe := safeHostReplacer.Replace(host)
 	return fmt.Sprintf("%s/flashsystem_%s.cache.json", cfg.Cache.Dir, safe)
 }
