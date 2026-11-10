@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -376,7 +377,7 @@ func TestEmitJSON(t *testing.T) {
 	}
 }
 
-func setupLoopbackSSHDiscoveryServer(t *testing.T, handler func(cmd string) (stdout string, stderr string, exitCode uint32)) (*internalssh.Client, func()) {
+func setupLoopbackSSHDiscoveryServer(t *testing.T, handler func(cmd string) (stdout string, stderr string, exitCode uint32)) (*internalssh.Client, string, int, func()) {
 	t.Helper()
 
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -495,7 +496,7 @@ func setupLoopbackSSHDiscoveryServer(t *testing.T, handler func(cmd string) (std
 		wg.Wait()
 	}
 
-	return client, cleanup
+	return client, host, port, cleanup
 }
 
 func TestRunDiscoveryCollectorValidCategories(t *testing.T) {
@@ -510,7 +511,7 @@ func TestRunDiscoveryCollectorValidCategories(t *testing.T) {
 		"svcinfo lsenclosurepsu -delim :":     "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
 	}
 
-	client, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
+	client, _, _, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
 		if resp, ok := cmdResponses[cmd]; ok {
 			return resp, "", 0
 		}
@@ -613,7 +614,7 @@ func TestRunDiscoveryCollectorValidCategories(t *testing.T) {
 }
 
 func TestRunDiscoveryCollectorExecutionFailure(t *testing.T) {
-	client, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
+	client, _, _, cleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
 		return "", "CMMVC5753E connection lost or command error", 1
 	})
 	defer cleanup()
@@ -893,4 +894,551 @@ func TestBuildFromStaleCachePartialAndMissing(t *testing.T) {
 	if !foundMissingVolumeErr {
 		t.Errorf("expected 'no cache available' error for volumes, got runs: %+v", out.Status.CollectorRuns)
 	}
+}
+
+func TestRunDiscoverCacheHitPath(t *testing.T) {
+	oldArgs := os.Args
+	oldCommandLine := flag.CommandLine
+	oldStdout := os.Stdout
+	defer func() {
+		os.Args = oldArgs
+		flag.CommandLine = oldCommandLine
+		os.Stdout = oldStdout
+	}()
+
+	tempDir := t.TempDir()
+	host := "192.168.10.50"
+	cachePath := filepath.Join(tempDir, "flashsystem_"+host+".cache.json")
+	c := cache.New(cachePath)
+
+	category := "drives"
+	cacheKey := cache.MakeDiscoveryKey(host, category)
+	cachedItems := []map[string]string{
+		{"{#DRIVEID}": "0", "{#DRIVESTATUS}": "online", "{#DRIVETYPE}": "flash"},
+		{"{#DRIVEID}": "1", "{#DRIVESTATUS}": "online", "{#DRIVETYPE}": "flash"},
+	}
+	if err := c.Set(cacheKey, cachedItems, 2*time.Hour); err != nil {
+		t.Fatalf("failed to populate cache: %v", err)
+	}
+
+	// Point to unreachable port to prove SSH is NOT dialed
+	os.Args = []string{
+		"cmd",
+		"-category=" + category,
+		"-host=" + host,
+		"-user=monitor",
+		"-password=secret",
+		"-insecure=true",
+		"-cache-dir=" + tempDir,
+		"-port=1", // Unreachable port
+	}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	runDiscover()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	type lldData struct {
+		Data []map[string]string `json:"data"`
+	}
+	var res lldData
+	if err := json.Unmarshal([]byte(output), &res); err != nil {
+		t.Fatalf("runDiscover output is not valid JSON: %v, raw: %s", err, output)
+	}
+
+	if len(res.Data) != 2 {
+		t.Fatalf("expected 2 items from cache hit, got %d", len(res.Data))
+	}
+	if res.Data[0]["{#DRIVEID}"] != "0" || res.Data[1]["{#DRIVEID}"] != "1" {
+		t.Errorf("unexpected LLD data from cache: %+v", res.Data)
+	}
+}
+
+func TestRunDiscoverSSHFailWithStaleCache(t *testing.T) {
+	oldArgs := os.Args
+	oldCommandLine := flag.CommandLine
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	defer func() {
+		os.Args = oldArgs
+		flag.CommandLine = oldCommandLine
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+	}()
+
+	tempDir := t.TempDir()
+	host := "192.168.10.51"
+	cachePath := filepath.Join(tempDir, "flashsystem_"+host+".cache.json")
+	c := cache.New(cachePath)
+
+	category := "pools"
+	cacheKey := cache.MakeDiscoveryKey(host, category)
+	staleItems := []map[string]string{
+		{"{#POOLID}": "0", "{#POOLNAME}": "PoolTier0", "{#POOLSTATUS}": "online"},
+	}
+	// Expired 10 minutes ago (< maxStaleAge 24h)
+	if err := c.Set(cacheKey, staleItems, -10*time.Minute); err != nil {
+		t.Fatalf("failed to set stale cache: %v", err)
+	}
+
+	// Pick unused closed port to guarantee SSH dial failure
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	_, pStr, _ := net.SplitHostPort(l.Addr().String())
+	unusedPort, _ := strconv.Atoi(pStr)
+	_ = l.Close()
+
+	os.Args = []string{
+		"cmd",
+		"-category=" + category,
+		"-host=" + host,
+		"-port=" + strconv.Itoa(unusedPort),
+		"-user=monitor",
+		"-password=secret",
+		"-insecure=true",
+		"-cache-dir=" + tempDir,
+		"-dial-timeout=1s",
+	}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	rOut, wOut, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout = wOut
+	os.Stderr = wErr
+
+	runDiscover()
+
+	wOut.Close()
+	wErr.Close()
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+
+	var bufOut, bufErr bytes.Buffer
+	_, _ = io.Copy(&bufOut, rOut)
+	_, _ = io.Copy(&bufErr, rErr)
+
+	var res struct {
+		Data []map[string]string `json:"data"`
+	}
+	if err := json.Unmarshal(bufOut.Bytes(), &res); err != nil {
+		t.Fatalf("expected valid JSON from stale discovery cache: %v, got %s", err, bufOut.String())
+	}
+
+	if len(res.Data) != 1 || res.Data[0]["{#POOLNAME}"] != "PoolTier0" {
+		t.Errorf("unexpected stale discovery items: %+v", res.Data)
+	}
+
+	stderrText := bufErr.String()
+	if !strings.Contains(stderrText, "serving stale discovery cache") {
+		t.Errorf("expected stderr to log 'serving stale discovery cache', got: %s", stderrText)
+	}
+}
+
+func TestRunDiscoverSSHFailWithExpiredStaleCacheBeyond24Hours(t *testing.T) {
+	oldArgs := os.Args
+	oldCommandLine := flag.CommandLine
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	defer func() {
+		os.Args = oldArgs
+		flag.CommandLine = oldCommandLine
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+	}()
+
+	tempDir := t.TempDir()
+	host := "192.168.10.52"
+	cachePath := filepath.Join(tempDir, "flashsystem_"+host+".cache.json")
+
+	category := "nodes"
+	cacheKey := cache.MakeDiscoveryKey(host, category)
+
+	// Create entry cached 25 hours ago (> maxStaleAge 24h)
+	oldTime := time.Now().Add(-25 * time.Hour)
+	entry := cache.Entry{
+		Key:       cacheKey,
+		Value:     []byte(`[{"{#NODEID}":"1","{#NODENAME}":"node_canister_1"}]`),
+		CachedAt:  oldTime,
+		ExpiresAt: oldTime.Add(4 * time.Hour),
+	}
+	cacheData := struct {
+		Version   string                 `json:"version"`
+		UpdatedAt time.Time              `json:"updated_at"`
+		Entries   map[string]cache.Entry `json:"entries"`
+	}{
+		Version:   "1.0",
+		UpdatedAt: oldTime,
+		Entries:   map[string]cache.Entry{cacheKey: entry},
+	}
+	data, _ := json.Marshal(cacheData)
+	if err := os.WriteFile(cachePath, data, 0600); err != nil {
+		t.Fatalf("failed to write cache file: %v", err)
+	}
+
+	// Pick unused closed port
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	_, pStr, _ := net.SplitHostPort(l.Addr().String())
+	unusedPort, _ := strconv.Atoi(pStr)
+	_ = l.Close()
+
+	os.Args = []string{
+		"cmd",
+		"-category=" + category,
+		"-host=" + host,
+		"-port=" + strconv.Itoa(unusedPort),
+		"-user=monitor",
+		"-password=secret",
+		"-insecure=true",
+		"-cache-dir=" + tempDir,
+		"-dial-timeout=1s",
+	}
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	rOut, wOut, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout = wOut
+	os.Stderr = wErr
+
+	runDiscover()
+
+	wOut.Close()
+	wErr.Close()
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+
+	var bufOut, bufErr bytes.Buffer
+	_, _ = io.Copy(&bufOut, rOut)
+	_, _ = io.Copy(&bufErr, rErr)
+
+	// Output must be empty LLD `{"data":[]}` because stale entry is older than 24h
+	trimmed := strings.TrimSpace(bufOut.String())
+	if trimmed != `{"data":[]}` {
+		t.Errorf("expected empty LLD {\"data\":[]} for expired stale entry, got: %q", trimmed)
+	}
+}
+
+func TestRunDiscoverAndCollectEndToEndWithLoopbackSSH(t *testing.T) {
+	cmdResponses := map[string]string{
+		"svcinfo lssystem -delim :":                   "id:0\nname:FS_EndToEnd_Cluster\ncode_level:8.7.0.0 (build 100.200)\nstatus:online\n",
+		"svcinfo lsnode -delim :":                     "id:name:status:IO_group_name\n1:node1:online:io_grp0\n",
+		"svcinfo lsenclosure -delim :":                "id:status:product_MTM\n1:online:2076-24F\n",
+		"svcinfo lsdrive -delim :":                    "id:status:capacity:enclosure_id:slot_id:tech_type\n0:online:960247313203:1:1:flash\n",
+		"svcinfo lsmdiskgrp -bytes -delim :":          "id:name:status:capacity\n1:pool_tier0:online:1099511627776\n",
+		"svcinfo lsvdisk -bytes -delim :":             "id:name:status:mdisk_grp_name\n100:vol_e2e_01:online:pool_tier0\n",
+		"svcinfo lsportfc -delim :":                   "id:WWPN:status:node_name:port_speed\n1:500507680100ABCD:active:node1:16Gb\n",
+		"svcinfo lsfcmap -delim :":                    "id:name:source_vdisk_name:target_vdisk_name:status\n0:map0:vol_e2e_01:vol_e2e_01_copy:copied\n",
+		"svcinfo lsreplicationrelationship -delim :":  "id:name:state\n0:rel_e2e:consistent_synchronized\n",
+		"svcinfo lssystemstats -delim :":              "stat_name:stat_current:stat_peak\ncpu_pc:10:25\n",
+		"svcinfo lsenclosurebattery -delim :":         "enclosure_id:battery_id:status:percent_charged:end_of_life_warning:recondition_needed\n1:1:online:95:no:no\n",
+		"svcinfo lsenclosurepsu -delim :":             "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
+	}
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+	signer, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		t.Fatalf("failed to create signer: %v", err)
+	}
+
+	serverConfig := &ssh.ServerConfig{
+		PasswordCallback: func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+			if conn.User() == "testuser" && string(password) == "testpass" {
+				return nil, nil
+			}
+			return nil, errors.New("auth failed")
+		},
+	}
+	serverConfig.AddHostKey(signer)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	defer listener.Close()
+
+	var wg sync.WaitGroup
+	stopped := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			tcpConn, err := listener.Accept()
+			if err != nil {
+				select {
+				case <-stopped:
+					return
+				default:
+					return
+				}
+			}
+
+			go func(c net.Conn) {
+				sshConn, chans, reqs, err := ssh.NewServerConn(c, serverConfig)
+				if err != nil {
+					return
+				}
+				go ssh.DiscardRequests(reqs)
+
+				for newChannel := range chans {
+					if newChannel.ChannelType() != "session" {
+						_ = newChannel.Reject(ssh.UnknownChannelType, "unknown")
+						continue
+					}
+					ch, requests, err := newChannel.Accept()
+					if err != nil {
+						continue
+					}
+
+					go func(channel ssh.Channel, reqs <-chan *ssh.Request) {
+						defer channel.Close()
+						for req := range reqs {
+							if req.Type == "exec" {
+								if len(req.Payload) < 4 {
+									_ = req.Reply(false, nil)
+									return
+								}
+								cmdLen := binary.BigEndian.Uint32(req.Payload[:4])
+								cmd := string(req.Payload[4 : 4+cmdLen])
+								_ = req.Reply(true, nil)
+
+								resp, ok := cmdResponses[cmd]
+								if ok {
+									_, _ = io.WriteString(channel, resp)
+									status := struct{ Status uint32 }{0}
+									_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(&status))
+								} else {
+									_, _ = io.WriteString(channel.Stderr(), "command not recognized: "+cmd)
+									status := struct{ Status uint32 }{1}
+									_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(&status))
+								}
+								return
+							}
+							_ = req.Reply(false, nil)
+						}
+					}(ch, requests)
+				}
+				_ = sshConn.Close()
+			}(tcpConn)
+		}
+	}()
+
+	defer func() {
+		close(stopped)
+		_ = listener.Close()
+		wg.Wait()
+	}()
+
+	host, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+
+	tempDir := t.TempDir()
+
+	t.Run("LiveRunDiscoverEnclosures", func(t *testing.T) {
+		oldArgs := os.Args
+		oldCommandLine := flag.CommandLine
+		oldStdout := os.Stdout
+		defer func() {
+			os.Args = oldArgs
+			flag.CommandLine = oldCommandLine
+			os.Stdout = oldStdout
+		}()
+
+		os.Args = []string{
+			"cmd",
+			"-category=enclosures",
+			"-host=" + host,
+			"-port=" + strconv.Itoa(port),
+			"-user=testuser",
+			"-password=testpass",
+			"-insecure=true",
+			"-cache-dir=" + tempDir,
+		}
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+		rOut, wOut, _ := os.Pipe()
+		os.Stdout = wOut
+
+		runDiscover()
+
+		wOut.Close()
+		os.Stdout = oldStdout
+
+		var bufOut bytes.Buffer
+		_, _ = io.Copy(&bufOut, rOut)
+
+		var res struct {
+			Data []map[string]string `json:"data"`
+		}
+		if err := json.Unmarshal(bufOut.Bytes(), &res); err != nil {
+			t.Fatalf("expected valid JSON from runDiscover: %v, raw: %s", err, bufOut.String())
+		}
+
+		if len(res.Data) != 1 || res.Data[0]["{#ENCLOSUREMODEL}"] != "2076-24F" {
+			t.Errorf("unexpected discovered enclosures: %+v", res.Data)
+		}
+
+		// Verify it was cached in cache file
+		cacheFile := filepath.Join(tempDir, "flashsystem_"+host+".cache.json")
+		c := cache.New(cacheFile)
+		entry, ok := c.Get(cache.MakeDiscoveryKey(host, "enclosures"))
+		if !ok {
+			t.Fatal("expected discovery entry to be cached on disk")
+		}
+		var cachedRecs []map[string]string
+		if err := entry.Unmarshal(&cachedRecs); err != nil {
+			t.Fatalf("failed to unmarshal cached LLD records: %v", err)
+		}
+		if len(cachedRecs) != 1 || cachedRecs[0]["{#ENCLOSUREMODEL}"] != "2076-24F" {
+			t.Errorf("cached discovery records mismatch: %+v", cachedRecs)
+		}
+	})
+
+	t.Run("LiveRunDiscoverCollectorFailureWithStaleFallback", func(t *testing.T) {
+		oldArgs := os.Args
+		oldCommandLine := flag.CommandLine
+		oldStdout := os.Stdout
+		oldStderr := os.Stderr
+		defer func() {
+			os.Args = oldArgs
+			flag.CommandLine = oldCommandLine
+			os.Stdout = oldStdout
+			os.Stderr = oldStderr
+		}()
+
+		// Dedicated server where commands fail with exit code 1
+		failClient, fHost, fPort, failCleanup := setupLoopbackSSHDiscoveryServer(t, func(cmd string) (string, string, uint32) {
+			return "", "CMMVC5753E storage CLI internal failure", 1
+		})
+		defer failCleanup()
+		_ = failClient.Close() // Close loopback client since runDiscover dials on its own
+
+		fCacheDir := t.TempDir()
+		fCacheFile := filepath.Join(fCacheDir, "flashsystem_"+fHost+".cache.json")
+		c := cache.New(fCacheFile)
+		staleKey := cache.MakeDiscoveryKey(fHost, "volumes")
+		staleVols := []map[string]string{
+			{"{#VOLUMEID}": "100", "{#VOLUMENAME}": "vol_stale_fallback", "{#VOLUMESTATUS}": "online"},
+		}
+		// Expired 5 minutes ago (< maxStaleAge 24h)
+		_ = c.Set(staleKey, staleVols, -5*time.Minute)
+
+		os.Args = []string{
+			"cmd",
+			"-category=volumes",
+			"-host=" + fHost,
+			"-port=" + strconv.Itoa(fPort),
+			"-user=monitor",
+			"-password=secret",
+			"-insecure=true",
+			"-cache-dir=" + fCacheDir,
+		}
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+		rOut, wOut, _ := os.Pipe()
+		rErr, wErr, _ := os.Pipe()
+		os.Stdout = wOut
+		os.Stderr = wErr
+
+		runDiscover()
+
+		wOut.Close()
+		wErr.Close()
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+
+		var bufOut, bufErr bytes.Buffer
+		_, _ = io.Copy(&bufOut, rOut)
+		_, _ = io.Copy(&bufErr, rErr)
+
+		var res struct {
+			Data []map[string]string `json:"data"`
+		}
+		if err := json.Unmarshal(bufOut.Bytes(), &res); err != nil {
+			t.Fatalf("expected valid JSON from stale fallback: %v, raw: %s", err, bufOut.String())
+		}
+
+		if len(res.Data) != 1 || res.Data[0]["{#VOLUMENAME}"] != "vol_stale_fallback" {
+			t.Errorf("unexpected fallback records: %+v", res.Data)
+		}
+
+		if !strings.Contains(bufErr.String(), "serving stale discovery cache") {
+			t.Errorf("expected stderr to log 'serving stale discovery cache', got: %s", bufErr.String())
+		}
+	})
+
+	t.Run("LiveRunCollectFullMasterItem", func(t *testing.T) {
+		oldArgs := os.Args
+		oldCommandLine := flag.CommandLine
+		oldStdout := os.Stdout
+		defer func() {
+			os.Args = oldArgs
+			flag.CommandLine = oldCommandLine
+			os.Stdout = oldStdout
+		}()
+
+		os.Args = []string{
+			"cmd",
+			"-host=" + host,
+			"-port=" + strconv.Itoa(port),
+			"-user=testuser",
+			"-password=testpass",
+			"-insecure=true",
+			"-cache-dir=" + tempDir,
+		}
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+		rOut, wOut, _ := os.Pipe()
+		os.Stdout = wOut
+
+		runCollect()
+
+		wOut.Close()
+		os.Stdout = oldStdout
+
+		var bufOut bytes.Buffer
+		_, _ = io.Copy(&bufOut, rOut)
+
+		var outMap map[string]interface{}
+		if err := json.Unmarshal(bufOut.Bytes(), &outMap); err != nil {
+			t.Fatalf("runCollect emitted invalid JSON: %v, raw: %s", err, bufOut.String())
+		}
+
+		// Validate all 18 top-level contract keys
+		expectedKeys := []string{
+			"timestamp", "host", "version", "system", "nodes", "enclosures",
+			"drives", "pools", "volumes", "ports", "flashcopy", "replication",
+			"performance", "status", "cache_stats", "batteries", "psus", "units_info",
+		}
+
+		for _, k := range expectedKeys {
+			val, ok := outMap[k]
+			if !ok {
+				t.Errorf("missing top-level key %q in runCollect output", k)
+			}
+			if val == nil {
+				t.Errorf("key %q is null in runCollect output", k)
+			}
+		}
+
+		status, ok := outMap["status"].(map[string]interface{})
+		if !ok || status["success"] != true {
+			t.Errorf("expected status.success = true, got: %+v", status)
+		}
+	})
 }

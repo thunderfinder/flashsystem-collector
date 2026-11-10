@@ -52,3 +52,13 @@ Testing with an in-memory loopback SSH server proved that:
 3. Error payload string escaping: `escapeJSONString` must safely handle raw control characters (quotes, backslashes, tabs, carriage returns) without corrupting fallback JSON strings emitted to stdout.
 
 **Action:** Maintain end-to-end integration tests in `main_test.go` covering `dialSSH` against loopback SSH fixtures, full/partial stale cache fallback across all 12 storage collectors, and string escaping edge cases.
+
+## 2026-05-24 - End-to-End Discovery and Collection Execution Resilience
+
+**Learning:** `runDiscover` and `runCollect` in `main.go` implement critical operational safety behaviors for Zabbix Low-Level Discovery and Master Item polling. Previous tests examined lower-level helper functions in isolation, but the orchestration pathways for discovery cache hits, transport outages, and live discovery caching were unverified:
+1. `runDiscover` Cache Hit Fast-Path: When a fresh discovery cache entry exists (`MakeDiscoveryKey`), `runDiscover` must immediately serialize and emit LLD JSON (`emitLLDFromCache`) without attempting any TCP dial or SSH handshake.
+2. Discovery Stale Cache Boundary (`maxStaleAge = 24 * time.Hour`): During storage interface failures or remote command failures, `runDiscover` must serve stale discovery items if cached within 24 hours, while logging a diagnostic warning to stderr. Once past 24 hours, stale discovery items must be strictly rejected and normalize to empty LLD `{"data":[]}` to prevent Zabbix from retaining nonexistent or decommissioned infrastructure.
+3. Collector Execution Failure Resilience: When SSH connects successfully but the specific discovery collector command fails (e.g. CMMVC errors), `runDiscover` must fall back to stale discovery cache if available, rather than terminating prematurely.
+4. End-to-End Master Item Verification: `runCollect` orchestrates config loading, SSH dialing, atomic cache purging upon success, parallel collector execution across 12 resources, and progressive output reduction, generating an 18-root-key JSON telemetry payload matching the Zabbix template contract.
+
+**Action:** Future tests of discovery and collection orchestration must exercise the complete flow against in-memory loopback SSH server fixtures and temporary on-disk cache files, verifying both stdout JSON formatting and stderr diagnostic outputs under race detection (`-race`).
