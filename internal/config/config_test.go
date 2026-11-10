@@ -460,6 +460,18 @@ func TestCacheFile(t *testing.T) {
 	}
 }
 
+func BenchmarkCacheFile(b *testing.B) {
+	cfg := defaultConfig()
+	cfg.Cache.Dir = "/var/tmp"
+	host := "10.10.10.50:22"
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = cfg.CacheFile(host)
+	}
+}
+
 func TestParseDurationEnv(t *testing.T) {
 	if d := parseDurationEnv("NON_EXISTENT_VAR"); d != 0 {
 		t.Errorf("expected 0 for unset var, got %s", d)

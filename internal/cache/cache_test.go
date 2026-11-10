@@ -198,6 +198,34 @@ func TestCacheFileSecurity(t *testing.T) {
 			t.Fatal("expected 0666 cache file to be rejected on load")
 		}
 	}
+
+	// 4. Cache file ownership validation
+	if runtime.GOOS != "windows" {
+		info, err := os.Lstat(validPath)
+		if err != nil {
+			t.Fatalf("failed lstat valid cache file: %v", err)
+		}
+
+		currentUID := uint32(os.Getuid())
+		// Current process UID should be accepted as owner of its own cache file
+		if !checkFileOwnerUID(info, currentUID) {
+			t.Fatalf("expected checkFileOwnerUID to return true for current UID %d", currentUID)
+		}
+
+		// When running as attacker UID and current process is not root (UID 0),
+		// the file (owned by non-root currentUID) must be rejected.
+		if currentUID != 0 {
+			attackerUID := currentUID + 9999
+			if checkFileOwnerUID(info, attackerUID) {
+				t.Fatalf("expected checkFileOwnerUID to reject file when running as different UID %d", attackerUID)
+			}
+		}
+
+		// isCacheFileOwner must accept the current process file
+		if !isCacheFileOwner(info) {
+			t.Fatal("expected isCacheFileOwner to return true for valid cache file")
+		}
+	}
 }
 
 func TestCacheConcurrency(t *testing.T) {

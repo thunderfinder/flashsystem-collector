@@ -65,3 +65,9 @@
 **Learning:** `.github/workflows/dependency-review.yml` declared `pull-requests: write` at the top-level workflow permissions block, violating least-privilege standards and triggering `zizmor` high-severity `excessive-permissions` findings. Scoping `pull-requests: write` at the workflow level unnecessarily grants PR write capabilities to all current or future jobs. Additionally, the workflow lacked concurrency management, allowing obsolete dependency review checks to continue running when subsequent commits are pushed to the same pull request.
 
 **Action:** Default the top-level permissions in `.github/workflows/dependency-review.yml` to `contents: read`, scope `pull-requests: write` strictly to the `dependency-review` job level with documented explanatory comments, add a descriptive job name, and enforce workflow concurrency controls (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`).
+
+## 2026-11-08 - Concurrency Controls in CodeQL Advanced Analysis Workflow
+
+**Learning:** The CodeQL Advanced analysis workflow (`.github/workflows/codeql.yml`) lacked workflow-level concurrency configuration. Because CodeQL analysis is computationally intensive (running AST extraction across multiple languages with 30-minute timeouts), pushing multiple commits to pull requests resulted in duplicate concurrent runs of superseded commits, exhausting repository runner capacity and causing queue contention.
+
+**Action:** Configure workflow-level concurrency controls (`group: ${{ github.workflow }}-${{ github.ref }}`) with dynamic pull request cancellation (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`) in `.github/workflows/codeql.yml` so that obsolete PR analyses are canceled immediately while scheduled and main branch runs run to completion.
