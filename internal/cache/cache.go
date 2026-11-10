@@ -204,6 +204,14 @@ func (c *Cache) loadFromDisk() {
 		return
 	}
 
+	// Security: on POSIX systems, cache file must be owned by the current process
+	// user or root (UID 0). In world-writable directories such as /var/tmp, an
+	// unprivileged attacker could pre-create a cache file with mode 0600 owned by
+	// themselves to poison monitoring metrics and discovery items served to Zabbix.
+	if !isCacheFileOwner(info) {
+		return
+	}
+
 	data, err := os.ReadFile(c.filePath)
 	if err != nil {
 		return
@@ -327,4 +335,12 @@ func (e *Entry) Unmarshal(dest interface{}) error {
 		return fmt.Errorf("cache: cannot deserialize entry %q: %w", e.Key, err)
 	}
 	return nil
+}
+
+// isCacheFileOwner checks if the file is owned by the current process UID or root (UID 0) on POSIX.
+func isCacheFileOwner(info os.FileInfo) bool {
+	if runtime.GOOS == "windows" {
+		return true
+	}
+	return checkFileOwnerUID(info, uint32(os.Getuid()))
 }
