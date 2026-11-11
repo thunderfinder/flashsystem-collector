@@ -62,3 +62,13 @@ Testing with an in-memory loopback SSH server proved that:
 4. End-to-End Master Item Verification: `runCollect` orchestrates config loading, SSH dialing, atomic cache purging upon success, parallel collector execution across 12 resources, and progressive output reduction, generating an 18-root-key JSON telemetry payload matching the Zabbix template contract.
 
 **Action:** Future tests of discovery and collection orchestration must exercise the complete flow against in-memory loopback SSH server fixtures and temporary on-disk cache files, verifying both stdout JSON formatting and stderr diagnostic outputs under race detection (`-race`).
+
+## 2026-05-25 - Atomic Cache Disk Write Failures, Incompatible Versions, and Concurrent Lifecycle Safety
+
+**Learning:** `internal/cache` manages on-disk JSON caching via atomic temporary file generation (`.flashsystem_cache_*.tmp`), `saveToDisk` file syncing, and format versioning. Prior to this run, several failure boundaries and concurrency scenarios in `cache.go` lacked direct unit test coverage:
+1. Disk write failure and temp file cleanup: When the cache target directory is read-only or unwritable, `os.CreateTemp` or `os.Rename` fails. The deferred cleanup closure (`defer func() { if !success { os.Remove(tmpName) } }()`) must ensure that no orphaned temporary `.tmp` files leak into the directory to prevent filesystem inode exhaustion in high-frequency monitoring environments.
+2. Incompatible cache versions: Cache stores with mismatched version identifiers (e.g. future or corrupt formats) must be safely discarded on load, reverting to an empty cache without returning an unhandled error or corrupting subsequent fresh writes.
+3. Explicit null entries: JSON caches serialized with `"entries": null` must gracefully instantiate `s.Entries = make(map[string]Entry)` during `loadFromDisk()`, preventing nil map assignment panics on subsequent `Set()` calls.
+4. Concurrency with `Delete()` and `Purge()`: While basic concurrent read/write was tested, high-concurrency workloads executing simultaneous `Set`, `Get`, `GetStale`, `Len`, `Stats`, `Delete`, and `Purge` operations require validation under `-race` to ensure locking discipline between `c.mu.Lock()` and `c.mu.RLock()` avoids deadlocks or data races during disk sync.
+
+**Action:** Maintain tests verifying write error cleanup without orphaned `.tmp` files, schema version mismatch rejection, null-entry safety, and concurrent lifecycle operations with `Delete()` and `Purge()` in `internal/cache/cache_test.go`.
