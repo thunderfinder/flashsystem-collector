@@ -13,7 +13,7 @@ This directory implements the disk-backed, thread-safe, persistent JSON caching 
   - Discovery TTL (default 4h)
   - Performance TTL (default 1m)
 - **Stale Data Fallback**: Provides `GetStale(key)` to retrieve expired entries when SSH connectivity to the storage system fails.
-- **Cache File Security**: Enforces strict POSIX permissions (`0600`) upon cache write/rename and validates that existing cache files are regular files without group/world permissions (`perm & 0077 == 0`). Prevents path traversal via token sanitization.
+- **Cache File Security**: Enforces strict POSIX permissions (`0600`) upon cache write/rename, validates that existing cache files are regular files without group/world permissions (`perm & 0077 == 0`), and validates ownership by current process UID or root (UID 0) on POSIX. Prevents path traversal via token sanitization.
 
 ---
 

@@ -31,3 +31,11 @@
 **Learning:** Relying solely on outer configuration parsing layers for filesystem security checks violates defense-in-depth principles. The SSH client transport package is the final boundary responsible for reading credential files from disk.
 
 **Prevention:** Enforce `validateKeyFile` directly inside `internal/ssh.buildAuthMethod` to require regular files (`info.Mode().IsRegular()`) and strict POSIX permissions (`info.Mode().Perm() & 0077 == 0`, chmod 600 or stricter) prior to reading private keys.
+
+## 2026-05-18 - Cache File Ownership Validation on Shared Filesystems
+
+**Vulnerability:** In `internal/cache.loadFromDisk`, cache files were validated for regular file mode and POSIX permissions (`info.Mode().Perm() & 0077 == 0`), but file ownership was not checked. On multi-user systems where `/var/tmp` is shared and world-writable (`1777`), an untrusted local user could pre-create a cache file with `0600` permissions owned by that user. When the collector is executed by `root` (UID 0), root bypasses discretionary read restrictions, satisfies the `0600` check, and loads the attacker-planted cache file into memory, poisoning stale cache fallback and discovery results served to Zabbix.
+
+**Learning:** Permission bits alone do not establish trust in sticky, world-writable directories. Privileged callers (UID 0) can read restrictive files owned by any user. Cache files in shared directories must be verified for legitimate ownership before reading.
+
+**Prevention:** On POSIX systems, always verify that cache files are owned by the current process UID (`os.Getuid()`) or root (`stat.Uid == 0`) before unmarshaling or trusting their contents.
