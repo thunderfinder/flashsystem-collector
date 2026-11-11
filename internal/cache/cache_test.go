@@ -197,6 +197,23 @@ func TestCacheFileSecurity(t *testing.T) {
 		if _, ok := cInsecure2.Get("valid_key"); ok {
 			t.Fatal("expected 0666 cache file to be rejected on load")
 		}
+
+		// 4. File ownership helper logic tests (authorized vs unauthorized UIDs)
+		curUID := uint32(os.Getuid())
+		if !isAuthorizedOwner(curUID, curUID) {
+			t.Errorf("expected current UID %d to be authorized", curUID)
+		}
+		if !isAuthorizedOwner(0, curUID) {
+			t.Error("expected root UID 0 to be authorized")
+		}
+
+		// Unauthorized foreign UID test (must be rejected when not root)
+		if curUID != 0 {
+			foreignUID := curUID + 1000
+			if isAuthorizedOwner(foreignUID, curUID) {
+				t.Errorf("expected foreign UID %d to be rejected for current UID %d", foreignUID, curUID)
+			}
+		}
 	}
 }
 

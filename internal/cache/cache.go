@@ -192,15 +192,10 @@ func (c *Cache) loadFromDisk() {
 		return
 	}
 
-	// Security: cache file must be a regular file (reject symlinks, FIFOs, devices).
-	if !info.Mode().IsRegular() {
-		return
-	}
-
-	// Security: on POSIX systems, cache file must be accessible only by the owner
-	// (0600 or stricter). Reject files accessible by group or others to prevent
-	// loading attacker-tampered cache from shared directories like /var/tmp.
-	if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
+	// Security: verify that the cache file is a regular file, has restrictive permissions
+	// (0600 or stricter), and is owned by the current process UID or root (UID 0) on POSIX.
+	// This prevents loading attacker-planted or tampered cache files from shared locations like /var/tmp.
+	if !validateCacheFileSecurity(info) {
 		return
 	}
 
