@@ -1132,18 +1132,18 @@ func TestRunDiscoverSSHFailWithExpiredStaleCacheBeyond24Hours(t *testing.T) {
 
 func TestRunDiscoverAndCollectEndToEndWithLoopbackSSH(t *testing.T) {
 	cmdResponses := map[string]string{
-		"svcinfo lssystem -delim :":                   "id:0\nname:FS_EndToEnd_Cluster\ncode_level:8.7.0.0 (build 100.200)\nstatus:online\n",
-		"svcinfo lsnode -delim :":                     "id:name:status:IO_group_name\n1:node1:online:io_grp0\n",
-		"svcinfo lsenclosure -delim :":                "id:status:product_MTM\n1:online:2076-24F\n",
-		"svcinfo lsdrive -delim :":                    "id:status:capacity:enclosure_id:slot_id:tech_type\n0:online:960247313203:1:1:flash\n",
-		"svcinfo lsmdiskgrp -bytes -delim :":          "id:name:status:capacity\n1:pool_tier0:online:1099511627776\n",
-		"svcinfo lsvdisk -bytes -delim :":             "id:name:status:mdisk_grp_name\n100:vol_e2e_01:online:pool_tier0\n",
-		"svcinfo lsportfc -delim :":                   "id:WWPN:status:node_name:port_speed\n1:500507680100ABCD:active:node1:16Gb\n",
-		"svcinfo lsfcmap -delim :":                    "id:name:source_vdisk_name:target_vdisk_name:status\n0:map0:vol_e2e_01:vol_e2e_01_copy:copied\n",
-		"svcinfo lsreplicationrelationship -delim :":  "id:name:state\n0:rel_e2e:consistent_synchronized\n",
-		"svcinfo lssystemstats -delim :":              "stat_name:stat_current:stat_peak\ncpu_pc:10:25\n",
-		"svcinfo lsenclosurebattery -delim :":         "enclosure_id:battery_id:status:percent_charged:end_of_life_warning:recondition_needed\n1:1:online:95:no:no\n",
-		"svcinfo lsenclosurepsu -delim :":             "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
+		"svcinfo lssystem -delim :":                  "id:0\nname:FS_EndToEnd_Cluster\ncode_level:8.7.0.0 (build 100.200)\nstatus:online\n",
+		"svcinfo lsnode -delim :":                    "id:name:status:IO_group_name\n1:node1:online:io_grp0\n",
+		"svcinfo lsenclosure -delim :":               "id:status:product_MTM\n1:online:2076-24F\n",
+		"svcinfo lsdrive -delim :":                   "id:status:capacity:enclosure_id:slot_id:tech_type\n0:online:960247313203:1:1:flash\n",
+		"svcinfo lsmdiskgrp -bytes -delim :":         "id:name:status:capacity\n1:pool_tier0:online:1099511627776\n",
+		"svcinfo lsvdisk -bytes -delim :":            "id:name:status:mdisk_grp_name\n100:vol_e2e_01:online:pool_tier0\n",
+		"svcinfo lsportfc -delim :":                  "id:WWPN:status:node_name:port_speed\n1:500507680100ABCD:active:node1:16Gb\n",
+		"svcinfo lsfcmap -delim :":                   "id:name:source_vdisk_name:target_vdisk_name:status\n0:map0:vol_e2e_01:vol_e2e_01_copy:copied\n",
+		"svcinfo lsreplicationrelationship -delim :": "id:name:state\n0:rel_e2e:consistent_synchronized\n",
+		"svcinfo lssystemstats -delim :":             "stat_name:stat_current:stat_peak\ncpu_pc:10:25\n",
+		"svcinfo lsenclosurebattery -delim :":        "enclosure_id:battery_id:status:percent_charged:end_of_life_warning:recondition_needed\n1:1:online:95:no:no\n",
+		"svcinfo lsenclosurepsu -delim :":            "enclosure_id:psu_id:status:input_failed:output_failed:fan_failed\n1:1:online:no:no:no\n",
 	}
 
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
